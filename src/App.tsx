@@ -12,6 +12,7 @@ import Minimalism from "./pages/Minimalism";
 import Graffiti from "./pages/Graffiti";
 import Botanical from "./pages/Botanical";
 import Blend from "./pages/Blend";
+import StyleCompare from "./pages/StyleCompare";
 import BatchStudio from "./pages/BatchStudio";
 import NotFound from "./pages/NotFound";
 
@@ -33,6 +34,7 @@ const App = () => (
             <Route path="/graffiti" element={<Graffiti />} />
             <Route path="/botanical" element={<Botanical />} />
             <Route path="/blend" element={<Blend />} />
+            <Route path="/compare" element={<StyleCompare />} />
             <Route path="/batch" element={<BatchStudio />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
