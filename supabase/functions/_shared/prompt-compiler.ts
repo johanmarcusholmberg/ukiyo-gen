@@ -19,6 +19,29 @@ export const EDGE_SAFETY_RULES = [
   "decorative borders and internal framing elements must remain fully intact",
 ];
 
+/** Print optimization rules — activated only in print mode */
+export const PRINT_RULES = [
+  "extremely sharp detail at all scales",
+  "preserve micro textures: paper grain, ink splatter, brush fiber, canvas weave",
+  "clean crisp edges on all forms and outlines",
+  "no blur artifacts or soft focus anywhere",
+  "avoid oversmoothing — retain natural texture variation",
+  "high frequency detail retention for large format reproduction",
+  "crisp line clarity even at finest stroke widths",
+  "individual texture elements must remain distinct and separable",
+];
+
+/** Print-specific avoid rules — activated only in print mode */
+export const AVOID_PRINT_ARTIFACTS = [
+  "soft gradients that lose definition at print scale",
+  "washed out textures or faded detail areas",
+  "melted edges where forms blur into each other",
+  "plastic smoothing or waxy skin-like surfaces",
+  "low frequency detail that appears blurry when enlarged",
+  "interpolated or upscaled appearance",
+  "banding in color transitions",
+];
+
 const VARIATION_INSTRUCTIONS = [
   "alternate composition angle",
   "different lighting direction",
@@ -369,16 +392,23 @@ export const STYLE_RULES: Record<string, StyleRules> = {
 
 export interface CompileOptions {
   aspectRatio?: string;
+  /** Artwork background — used inside the generated image */
   backgroundStyle?: string;
   isEdit?: boolean;
   variationIndex?: number;
+  /** When true, injects print optimization rules */
+  printMode?: boolean;
 }
 
-function buildBgText(bg?: string): string {
+/**
+ * Build artwork background instruction — this is the GENERATED background color.
+ * It explicitly states that the background must not interfere with artwork borders.
+ */
+function buildArtworkBgText(bg?: string): string {
   if (bg === "cream") {
-    return "Use a warm cream/off-white vintage paper background tone. This background is an OUTER presentation layer — it must NOT replace, blend into, or obscure any edge details, borders, or frame elements within the artwork itself.";
+    return "ARTWORK BACKGROUND: Use a warm cream/off-white vintage paper background tone within the artwork. This background is an OUTER presentation layer — it must NOT replace, blend into, or obscure any edge details, borders, or frame elements within the artwork itself. Inner borders, outlines, and frame-like elements are PART of the artwork, not part of the background.";
   }
-  return "The background MUST be pure white (#FFFFFF). Do NOT use cream, beige, off-white, or any tinted color. This background is an OUTER presentation layer — it must NOT replace, blend into, or obscure any edge details, borders, or frame elements within the artwork itself.";
+  return "ARTWORK BACKGROUND: The background within the artwork MUST be pure white (#FFFFFF). Do NOT use cream, beige, off-white, or any tinted color. This background is an OUTER presentation layer — it must NOT replace, blend into, or obscure any edge details, borders, or frame elements within the artwork itself. Inner borders, outlines, and frame-like elements are PART of the artwork, not part of the background.";
 }
 
 /**
