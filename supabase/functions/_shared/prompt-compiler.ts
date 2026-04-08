@@ -422,20 +422,27 @@ export function compilePrompt(
 ): string {
   const rules = STYLE_RULES[styleKey];
   if (!rules) {
-    return [
+    const sections = [
       `PRIMARY SUBJECT: ${userPrompt}`,
       "",
       `GLOBAL QUALITY: ${GLOBAL_QUALITY.join(". ")}`,
       "",
       `EDGE SAFETY: ${EDGE_SAFETY_RULES.join(". ")}`,
+    ];
+    if (options.printMode) {
+      sections.push("", `PRINT OPTIMIZATION: ${PRINT_RULES.join(". ")}`);
+      sections.push("", `AVOID PRINT ARTIFACTS: ${AVOID_PRINT_ARTIFACTS.join(". ")}`);
+    }
+    sections.push(
       "",
       options.aspectRatio ? `The image must have a ${options.aspectRatio} aspect ratio.` : "",
-      buildBgText(options.backgroundStyle),
+      buildArtworkBgText(options.backgroundStyle),
       "Generate at maximum resolution with fine detail suitable for large format printing.",
-    ].filter(Boolean).join("\n");
+    );
+    return sections.filter(Boolean).join("\n");
   }
 
-  const { aspectRatio, backgroundStyle, isEdit = false, variationIndex } = options;
+  const { aspectRatio, backgroundStyle, isEdit = false, variationIndex, printMode = false } = options;
 
   const edgeSafetyLines = [...EDGE_SAFETY_RULES, ...(rules.edgeSafety || [])];
 
@@ -443,8 +450,12 @@ export function compilePrompt(
     ? `\nBLOCKED TRAITS (must NEVER appear): ${rules.blockedTraits.join(". ")}`
     : "";
 
-  const bgText = buildBgText(backgroundStyle);
+  const bgText = buildArtworkBgText(backgroundStyle);
   const ratioText = aspectRatio ? `The image must have a ${aspectRatio} aspect ratio, composed specifically for that format.` : "";
+
+  const printSection = printMode
+    ? `\nPRINT OPTIMIZATION: ${PRINT_RULES.join(". ")}\n\nAVOID PRINT ARTIFACTS: ${AVOID_PRINT_ARTIFACTS.join(". ")}`
+    : "";
 
   if (isEdit) {
     return [
@@ -467,6 +478,7 @@ export function compilePrompt(
       `GLOBAL QUALITY: ${[...rules.qualityRules, ...GLOBAL_QUALITY].join(", ")}`,
       `AVOID: ${rules.avoidRules.join(", ")}`,
       blockedSection,
+      printSection,
       "",
       "Generate at maximum resolution.",
     ].filter(Boolean).join("\n");
@@ -496,6 +508,7 @@ export function compilePrompt(
     "",
     `AVOID: ${rules.avoidRules.join(". ")}`,
     blockedSection,
+    printSection,
     "",
     bgText,
     ratioText,
