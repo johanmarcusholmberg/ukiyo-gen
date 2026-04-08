@@ -87,6 +87,7 @@ export default function ImageGenerator({
   const [exporting, setExporting] = useState(false);
   const hdEnhance = true; // Always max quality — no toggle
   const [backgroundStyle, setBackgroundStyle] = useState<"white" | "cream">("white");
+  const [paperColor, setPaperColor] = useState<"white" | "cream">("white");
   const [viewVersion, setViewVersion] = useState<"enhanced" | "original" | "compare">("enhanced");
   const [printSize, setPrintSize] = useState<PrintSize>(PRINT_SIZES[2]);
   const [qualityTarget, setQualityTarget] = useState<QualityTarget>("print-300");
@@ -111,6 +112,7 @@ export default function ImageGenerator({
         prompt: activePrompt.trim(),
         aspectRatio: effectiveAspectRatio,
         backgroundStyle,
+        printMode: generationMode === "print-ready",
       };
       if (isInlineEditing && imageUrl) {
         body.sourceImageUrl = imageUrl;
