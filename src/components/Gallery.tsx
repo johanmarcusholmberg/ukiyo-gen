@@ -240,20 +240,18 @@ function LightboxContent({
           <Button variant="outline" size="sm" onClick={() => downloadImage(img.publicUrl, `art-${img.id}.png`)} className="font-display text-xs">
             <Download className="mr-2 h-4 w-4" /> Download
           </Button>
-          {(printFormat || img.generation_mode === "print-ready") && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => onPrintExport(img)}
-              disabled={printExporting}
-              className="font-display text-xs border-primary/30 text-primary hover:bg-primary/10"
-            >
-              {printExporting
-                ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                : <Printer className="mr-2 h-4 w-4" />}
-              {hasExport ? "Re-export Print" : "Export Print"}
-            </Button>
-          )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onPrintExport(img)}
+            disabled={printExporting}
+            className="font-display text-xs border-primary/30 text-primary hover:bg-primary/10"
+          >
+            {printExporting
+              ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              : <Printer className="mr-2 h-4 w-4" />}
+            {hasExport ? "Re-export Print" : "Export Print"}
+          </Button>
           <Button variant="outline" size="sm" onClick={onCopyUrl} className="font-display text-xs">
             <Share2 className="mr-2 h-4 w-4" /> Copy URL
           </Button>
