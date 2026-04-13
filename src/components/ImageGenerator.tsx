@@ -30,19 +30,21 @@ import { Progress } from "@/components/ui/progress";
 
 type GenerationMode = "standard" | "print-ready";
 
-type GenerationStage = "idle" | "generating" | "enhancing" | "saving-gallery";
+type GenerationStage = "idle" | "generating" | "cleanup" | "upscaling" | "saving-gallery";
 
 const STAGE_LABELS: Record<GenerationStage, string> = {
   idle: "",
   generating: "Generating artwork…",
-  enhancing: "Enhancing quality…",
+  cleanup: "Cleaning artifacts…",
+  upscaling: "Super-resolution upscaling…",
   "saving-gallery": "Finalizing…",
 };
 
 const STAGE_PROGRESS: Record<GenerationStage, number> = {
   idle: 0,
-  generating: 35,
-  enhancing: 70,
+  generating: 25,
+  cleanup: 50,
+  upscaling: 70,
   "saving-gallery": 90,
 };
 
@@ -147,24 +149,23 @@ export default function ImageGenerator({
 
       // Run enhancement if mode requires it
       if (preset.runUpscale) {
-        setStage("enhancing");
+        setStage("cleanup");
         try {
           const upscaleBody: Record<string, unknown> = {
             imageUrl: data.imageUrl,
-            aspectRatio: effectiveAspectRatio,
             strength: preset.strength,
+            scaleFactor: preset.scaleFactor,
           };
-          // Pass print target resolution for resolution-aware enhancement
-          if (generationMode === "print-ready" || enhancementMode === "print-hd") {
-            upscaleBody.targetWidthPx = selectedPrintFormat.preferredPixelWidth;
-            upscaleBody.targetHeightPx = selectedPrintFormat.preferredPixelHeight;
-            upscaleBody.targetPpi = 300;
-            upscaleBody.printFormatId = selectedPrintFormat.id;
-          }
           const { data: upData, error: upError } = await supabase.functions.invoke(
             ENHANCEMENT_PROVIDER.edgeFunction,
             { body: upscaleBody },
           );
+
+          if (upData?.pipeline) {
+            console.log("Enhancement pipeline result:", upData.pipeline);
+            if (upData.pipeline.superResolution) setStage("upscaling");
+          }
+
           if (!upError && upData?.imageUrl) {
             finalUrl = upData.imageUrl;
           } else {
