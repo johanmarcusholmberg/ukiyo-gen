@@ -6,10 +6,36 @@
 // ── Universal constants ──
 
 export const GLOBAL_QUALITY = [
-  "high detail", "sharp focus", "clean edges", "high resolution",
-  "detailed textures", "professional illustration", "sharp rendering",
-  "balanced composition", "no artifacts", "print-ready resolution",
-  "suitable for large format printing",
+  "extremely sharp focus throughout the entire image",
+  "crisp clean edges on all forms and outlines",
+  "maximum native resolution",
+  "rich detailed textures with visible micro-detail",
+  "professional gallery-quality illustration",
+  "razor-sharp rendering with no softness",
+  "no compression artifacts or noise",
+  "print-ready resolution suitable for large format wall art",
+  "every detail must remain crisp when viewed at 300 PPI on large paper",
+];
+
+/** Wall-art composition rules — always applied */
+export const WALL_ART_COMPOSITION = [
+  "compose with large readable shapes that remain impactful at poster scale",
+  "use balanced negative space — avoid overcrowded compositions",
+  "establish a clear focal point that draws the eye immediately",
+  "favor bold graphic forms over intricate tiny details that break when enlarged",
+  "ensure strong subject separation from background",
+  "design as if this will be printed at 50×70 cm and hung on a wall",
+];
+
+/** Base technical quality — always injected */
+export const BASE_QUALITY_RULES = [
+  "generate at the highest possible native resolution",
+  "preserve micro textures: paper grain, ink splatter, brush fiber, canvas weave",
+  "maintain crisp line clarity at all stroke widths",
+  "avoid oversmoothing — retain natural texture variation",
+  "high frequency detail retention for large format reproduction",
+  "individual texture elements must remain distinct and separable",
+  "clean crisp edges on all forms and outlines — no blur artifacts",
 ];
 
 export const EDGE_SAFETY_RULES = [
