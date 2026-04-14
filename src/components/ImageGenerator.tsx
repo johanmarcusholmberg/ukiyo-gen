@@ -154,8 +154,18 @@ export default function ImageGenerator({
       if (!upError && upData?.imageUrl) {
         // Still the current run? Replace the preview with enhanced version
         if (enhancementRunId.current === runId) {
+          setEnhancedImageUrl(upData.imageUrl);
           setImageUrl(upData.imageUrl);
           setEnhancementStatus("done");
+
+          // If already saved to gallery, update the enhanced asset in background
+          if (savedGalleryIdRef.current) {
+            updateEnhancedAsset(savedGalleryIdRef.current, upData.imageUrl, {
+              enhancementModel: upData.pipeline?.provider || "replicate/real-esrgan",
+              upscaleFactor: upData.pipeline?.scale || currentPreset.scaleFactor,
+            }).catch((err) => console.warn("Failed to update enhanced asset in gallery:", err));
+          }
+
           // Auto-clear the "done" badge after a few seconds
           setTimeout(() => {
             if (enhancementRunId.current === runId) {
