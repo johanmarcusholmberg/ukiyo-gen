@@ -283,6 +283,10 @@ export default function ImageGenerator({
       printFormatId: isPrint ? selectedPrintFormat.id : undefined,
       generationMode: generationMode,
       exportType: isPrint ? selectedPrintFormat.exportType : undefined,
+      // Pass enhanced image URL separately so gallery stores both base + enhanced
+      enhancedImageUrl: enhancedImageUrl || undefined,
+      enhancementModel: enhancedImageUrl ? "replicate/real-esrgan" : undefined,
+      upscaleFactor: enhancedImageUrl ? preset.scaleFactor : undefined,
     };
   };
 
@@ -294,10 +298,12 @@ export default function ImageGenerator({
         ? `${initialPrompt} | Edited: ${prompt.trim()}`
         : prompt.trim();
 
-      await saveToGallery({
-        imageUrl,
+      // Always save using baseImageUrl as the primary source
+      const saveOpts = buildSaveOptions();
+      const result = await saveToGallery({
+        imageUrl: baseImageUrl || imageUrl,
         prompt: finalPrompt,
-        ...buildSaveOptions(),
+        ...saveOpts,
       });
       setSavedToGallery(true);
       onImageSaved?.();
