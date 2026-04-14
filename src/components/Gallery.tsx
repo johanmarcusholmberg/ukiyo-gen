@@ -184,7 +184,7 @@ function LightboxContent({
     : null;
   return (
     <div className="space-y-4">
-      <ImagePreviewMockups imageUrl={img.publicUrl} alt={img.prompt} />
+      <ImagePreviewMockups imageUrl={img.masterUrl} alt={img.prompt} />
       <div className="space-y-2">
         <p className="font-display text-sm text-foreground">{img.prompt}</p>
         <div className="flex flex-wrap gap-2 items-center">
@@ -244,7 +244,7 @@ function LightboxContent({
 
         {/* Actions */}
         <div className="flex flex-wrap gap-2 pt-2">
-          <Button variant="outline" size="sm" onClick={() => downloadImage(img.publicUrl, `art-${img.id}.png`)} className="font-display text-xs">
+          <Button variant="outline" size="sm" onClick={() => downloadImage(img.masterUrl, `art-${img.id}.png`)} className="font-display text-xs">
             <Download className="mr-2 h-4 w-4" /> Download
           </Button>
           <Button
@@ -589,7 +589,7 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
 
   const handlePrintExport = async (img: GalleryImage) => {
     // Guard: ensure source image exists
-    if (!img.publicUrl) {
+    if (!img.masterUrl) {
       toast.error("Source image is missing — cannot create print export");
       return;
     }
@@ -601,7 +601,7 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
     setPrintExporting(true);
     try {
       const result = await preparePrintExport({
-        imageUrl: img.publicUrl,
+        imageUrl: img.masterUrl,
         printFormatId: formatId,
       });
 
