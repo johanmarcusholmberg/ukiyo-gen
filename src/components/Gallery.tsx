@@ -610,6 +610,24 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
   useEffect(() => { setBgResult(null); }, [selected?.id]);
 
   const [printExporting, setPrintExporting] = useState(false);
+  const { isRunning: galleryUpscaling, upscale: galleryUpscale, reset: resetGalleryUpscale } = useUpscale();
+
+  const handleGalleryUpscale = async (img: GalleryImage) => {
+    const sourceUrl = img.masterUrl || img.publicUrl;
+    const result = await galleryUpscale(sourceUrl, { galleryImageId: img.id });
+    if (result) {
+      // Update local state with upscaled info
+      const update = { upscale_applied: true, enhanced: true, masterUrl: result, enhancedUrl: result };
+      setImages((prev) => prev.map((i) => i.id === img.id ? { ...i, ...update } : i));
+      if (selected?.id === img.id) setSelected((prev) => prev ? { ...prev, ...update } : prev);
+      toast.success("Image upscaled to 4× resolution", { duration: 4000 });
+    } else {
+      toast.error("Upscale failed — original image preserved");
+    }
+  };
+
+  // Reset upscale state when changing selected image
+  useEffect(() => { resetGalleryUpscale(); }, [selected?.id]);
 
   const handlePrintExport = async (img: GalleryImage) => {
     // Guard: ensure source image exists
