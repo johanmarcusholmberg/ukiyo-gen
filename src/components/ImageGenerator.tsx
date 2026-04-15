@@ -399,37 +399,16 @@ export default function ImageGenerator({
           );
         })()}
 
-        {/* Quality Mode Selector */}
-        <div>
-          <p className="font-display font-bold text-sm text-foreground mb-2">Image Quality</p>
-          <div className="grid grid-cols-3 gap-2">
-            {ENHANCEMENT_MODES.map((m) => {
-              const p = ENHANCEMENT_PRESETS[m];
-              const isSelected = enhancementMode === m;
-              return (
-                <button
-                  key={m}
-                  onClick={() => setEnhancementMode(m)}
-                  className={cn(
-                    "flex flex-col items-start gap-0.5 p-2.5 rounded-sm border font-display transition-colors text-left",
-                    isSelected
-                      ? "bg-primary text-primary-foreground border-primary"
-                      : "bg-secondary text-secondary-foreground border-border hover:bg-muted"
-                  )}
-                >
-                  <span className="flex items-center gap-1 text-xs font-bold">
-                    {m === "standard" && <Zap className="h-3 w-3" />}
-                    {m === "hd" && <Sparkles className="h-3 w-3" />}
-                    {m === "print-hd" && <Crown className="h-3 w-3" />}
-                    {p.label}
-                  </span>
-                  <span className={cn("text-[10px] leading-tight", isSelected ? "text-primary-foreground/80" : "text-muted-foreground")}>
-                    {p.description}
-                  </span>
-                </button>
-              );
-            })}
+        {/* Upscale 4× Toggle */}
+        <div className="flex items-center justify-between rounded-sm border border-border bg-card p-3">
+          <div className="flex items-center gap-2">
+            <ArrowUpCircle className="h-4 w-4 text-primary" />
+            <div>
+              <p className="font-display text-sm font-bold text-foreground">Upscale 4×</p>
+              <p className="font-display text-[10px] text-muted-foreground">Auto-run Real-ESRGAN after generation</p>
+            </div>
           </div>
+          <Switch checked={autoUpscale} onCheckedChange={setAutoUpscale} />
         </div>
 
         {/* Generation Mode Toggle */}
