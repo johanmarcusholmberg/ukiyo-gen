@@ -34,6 +34,8 @@ import JSZip from "jszip";
 import { getPrintFormat, assessExportReadiness, DEFAULT_PRINT_FORMAT_ID, formatExportDescription } from "@/lib/print-formats";
 import { preparePrintExport, downloadPrintExport } from "@/lib/print-export";
 import PrintQualityIndicator from "@/components/PrintQualityIndicator";
+import { useUpscale, UPSCALE_LABELS } from "@/hooks/use-upscale";
+import { Progress } from "@/components/ui/progress";
 
 interface GalleryImage {
   id: string;
