@@ -88,7 +88,7 @@ export default function ImageGenerator({
   const [replacing, setReplacing] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [autoUpscale, setAutoUpscale] = useState(false);
-  const [enhancementMode, setEnhancementMode] = useState<EnhancementMode>("hd");
+  const enhancementMode = "hd" as const;
   const [backgroundStyle, setBackgroundStyle] = useState<"white" | "cream">("white");
   const [paperColor, setPaperColor] = useState<"white" | "cream">("white");
   const [viewVersion, setViewVersion] = useState<"enhanced" | "original" | "compare">("enhanced");
