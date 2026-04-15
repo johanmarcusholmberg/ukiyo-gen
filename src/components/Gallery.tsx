@@ -735,6 +735,8 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
     showEdit: !!onEditImage,
     onPrintExport: handlePrintExport,
     printExporting,
+    onUpscale: handleGalleryUpscale,
+    upscaling: galleryUpscaling,
   } : null;
 
   return (
