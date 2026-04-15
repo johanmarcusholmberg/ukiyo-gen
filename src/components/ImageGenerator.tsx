@@ -627,6 +627,7 @@ export default function ImageGenerator({
                 <span className="text-xs text-primary flex items-center gap-1 font-display">
                   <Sparkles className="h-3 w-3" /> Upscaled
                 </span>
+              )}
               {!savedToGallery && isEditMode && originalImageId && (
                 <Button variant="outline" size="sm" onClick={handleReplaceOriginal} disabled={replacing || saving}
                   className="font-display text-xs tracking-wider">
