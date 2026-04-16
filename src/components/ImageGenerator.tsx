@@ -433,16 +433,33 @@ export default function ImageGenerator({
           );
         })()}
 
-        {/* Upscale 4× Toggle */}
-        <div className="flex items-center justify-between rounded-sm border border-border bg-card p-3">
+        {/* Upscale Mode Selector — replaces hardcoded HD enhancement.
+            Modes: none, Real-ESRGAN 4x, Tiled 4x, Tiled 8x. */}
+        <div className="rounded-sm border border-border bg-card p-3 space-y-2">
           <div className="flex items-center gap-2">
             <ArrowUpCircle className="h-4 w-4 text-primary" />
-            <div>
-              <p className="font-display text-sm font-bold text-foreground">Upscale 4×</p>
-              <p className="font-display text-[10px] text-muted-foreground">Auto-run Real-ESRGAN after generation</p>
-            </div>
+            <p className="font-display text-sm font-bold text-foreground">Upscale</p>
           </div>
-          <Switch checked={autoUpscale} onCheckedChange={setAutoUpscale} />
+          <div className="flex flex-wrap gap-1.5">
+            {UPSCALE_MODE_OPTIONS.map((opt) => (
+              <button
+                key={opt.id}
+                onClick={() => setUpscaleMode(opt.id)}
+                className={cn(
+                  "text-xs px-2.5 py-1 rounded-sm border font-display transition-colors",
+                  upscaleMode === opt.id
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "bg-secondary text-secondary-foreground border-border hover:bg-muted",
+                )}
+                title={opt.description}
+              >
+                {opt.shortLabel}
+              </button>
+            ))}
+          </div>
+          <p className="font-display text-[10px] text-muted-foreground">
+            {upscaleConfig.description}
+          </p>
         </div>
 
         {/* Generation Mode Toggle */}
@@ -571,42 +588,39 @@ export default function ImageGenerator({
         {/* Image preview — visible immediately after generation, even during enhancement */}
         {!isGenerating && imageUrl && (
           <div className="flex flex-col items-center gap-4 p-4 w-full relative">
-            {/* Upscaling overlay — non-blocking */}
+            {/* Upscaling overlay — non-blocking, staged progress */}
             {isUpscaling && (
               <div className="absolute top-2 left-2 right-2 z-10">
                 <div className="flex items-center gap-2 bg-card/90 backdrop-blur-sm border border-primary/30 rounded-sm px-3 py-2 shadow-sm">
                   <Loader2 className="h-3.5 w-3.5 animate-spin text-primary flex-shrink-0" />
                   <div className="flex-1 min-w-0">
-                    <p className="font-display text-xs text-foreground">
-                      {UPSCALE_LABELS[upscaleStatus]}
-                    </p>
-                    <Progress
-                      value={upscaleStatus === "cleanup" ? 40 : 75}
-                      className="h-1 w-full mt-1"
-                    />
+                    <p className="font-display text-xs text-foreground">{upscaleStageLabel}</p>
+                    <Progress value={upscaleProgress} className="h-1 w-full mt-1" />
                   </div>
                   <span className="font-display text-[10px] text-muted-foreground flex-shrink-0">
-                    4× upscale
+                    {upscaleConfig.shortLabel}
                   </span>
                 </div>
               </div>
             )}
 
             {/* Upscale complete badge */}
-            {upscaleStatus === "done" && (
+            {(upscaleStage === "done" || upscaleStage === "downshifted") && (
               <div className="absolute top-2 left-2 z-10">
                 <div className="flex items-center gap-1.5 bg-primary/10 border border-primary/30 rounded-sm px-2.5 py-1.5 shadow-sm animate-in fade-in duration-300">
                   <Sparkles className="h-3 w-3 text-primary" />
-                  <span className="font-display text-[10px] text-primary font-bold">Upscaled · 4× resolution</span>
+                  <span className="font-display text-[10px] text-primary font-bold">
+                    Upscaled · {upscaleStage === "downshifted" ? "tile 4× (downshifted)" : `${upscaleConfig.scaleFactor}× resolution`}
+                  </span>
                 </div>
               </div>
             )}
 
             {/* Upscale failed badge */}
-            {upscaleStatus === "failed" && (
+            {upscaleStage === "failed" && (
               <div className="absolute top-2 left-2 z-10">
                 <div className="flex items-center gap-1.5 bg-muted border border-border rounded-sm px-2.5 py-1.5 shadow-sm animate-in fade-in duration-300">
-                  <span className="font-display text-[10px] text-muted-foreground">Upscale skipped</span>
+                  <span className="font-display text-[10px] text-muted-foreground">Upscale failed — original kept</span>
                 </div>
               </div>
             )}
