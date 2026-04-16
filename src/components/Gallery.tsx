@@ -34,7 +34,8 @@ import JSZip from "jszip";
 import { getPrintFormat, assessExportReadiness, DEFAULT_PRINT_FORMAT_ID, formatExportDescription } from "@/lib/print-formats";
 import { preparePrintExport, downloadPrintExport } from "@/lib/print-export";
 import PrintQualityIndicator from "@/components/PrintQualityIndicator";
-import { useUpscale, UPSCALE_LABELS } from "@/hooks/use-upscale";
+import { useUpscale } from "@/hooks/use-upscale";
+import { UPSCALE_MODE_OPTIONS, UPSCALE_MODES, type UpscaleMode } from "@/lib/upscale-modes";
 import { Progress } from "@/components/ui/progress";
 
 interface GalleryImage {
@@ -66,6 +67,9 @@ interface GalleryImage {
   export_storage_path?: string | null;
   export_type?: string | null;
   upscale_applied?: boolean | null;
+  upscale_mode?: string | null;
+  original_storage_path?: string | null;
+  upscaled_at?: string | null;
   enhancement_model?: string | null;
   upscale_factor?: number | null;
 }
@@ -171,8 +175,10 @@ interface LightboxContentProps {
   showEdit: boolean;
   onPrintExport: (img: GalleryImage) => void;
   printExporting: boolean;
-  onUpscale: (img: GalleryImage) => void;
+  onUpscale: (img: GalleryImage, mode: UpscaleMode) => void;
   upscaling: boolean;
+  upscalingStageLabel: string;
+  upscalingProgress: number;
 }
 
 function LightboxContent({
@@ -180,12 +186,15 @@ function LightboxContent({
   onChangeBg, onSaveBg, onDiscardBg,
   bgChanging, bgResult, showEdit,
   onPrintExport, printExporting,
-  onUpscale, upscaling,
+  onUpscale, upscaling, upscalingStageLabel, upscalingProgress,
 }: LightboxContentProps) {
   const printFormat = img.print_format_id ? getPrintFormat(img.print_format_id) : null;
   const hasExport = !!img.export_storage_path;
   const exportReadiness = printFormat && img.actual_width_px && img.actual_height_px
     ? assessExportReadiness(img.actual_width_px, img.actual_height_px, printFormat)
+    : null;
+  const currentModeLabel = img.upscale_mode
+    ? UPSCALE_MODES[img.upscale_mode as UpscaleMode]?.shortLabel ?? img.upscale_mode
     : null;
   return (
     <div className="space-y-4">
@@ -264,23 +273,40 @@ function LightboxContent({
               : <Printer className="mr-2 h-4 w-4" />}
             {hasExport ? "Re-export Print" : "Export Print"}
           </Button>
-          {/* Upscale 4× */}
-          {!img.upscale_applied && (
-            <Button
-              variant="outline" size="sm"
-              onClick={() => onUpscale(img)}
-              disabled={upscaling}
-              className="font-display text-xs border-primary/30 text-primary hover:bg-primary/10"
-            >
-              {upscaling
-                ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                : <ArrowUpCircle className="mr-2 h-4 w-4" />}
-              {upscaling ? "Upscaling…" : "Upscale 4×"}
-            </Button>
+          {/* Upscale 4× / tiled. Always reprocesses from the base image. */}
+          {!upscaling && (
+            <div className="flex items-center gap-1 border border-primary/30 rounded-sm p-0.5">
+              {UPSCALE_MODE_OPTIONS.filter((o) => o.runs).map((opt) => (
+                <Button
+                  key={opt.id}
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => onUpscale(img, opt.id)}
+                  className="font-display text-xs h-7 px-2 text-primary hover:bg-primary/10"
+                  title={
+                    img.upscale_applied
+                      ? `Re-run upscale from the original/base image using ${opt.label}`
+                      : opt.description
+                  }
+                >
+                  <ArrowUpCircle className="mr-1 h-3 w-3" />
+                  {opt.shortLabel}
+                </Button>
+              ))}
+            </div>
           )}
-          {img.upscale_applied && (
+          {upscaling && (
+            <div className="flex items-center gap-2 border border-primary/30 rounded-sm px-2 py-1 min-w-[180px]">
+              <Loader2 className="h-3 w-3 animate-spin text-primary" />
+              <div className="flex-1">
+                <span className="font-display text-[10px] text-foreground">{upscalingStageLabel}</span>
+                <Progress value={upscalingProgress} className="h-0.5 mt-0.5" />
+              </div>
+            </div>
+          )}
+          {img.upscale_applied && currentModeLabel && (
             <Badge variant="outline" className="font-display text-xs text-primary border-primary/30">
-              <Sparkles className="mr-1 h-3 w-3" /> Upscaled
+              <Sparkles className="mr-1 h-3 w-3" /> {currentModeLabel}
             </Badge>
           )}
           <Button variant="outline" size="sm" onClick={onCopyUrl} className="font-display text-xs">
