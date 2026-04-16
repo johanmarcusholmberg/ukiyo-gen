@@ -25,10 +25,14 @@ import { type QualityTarget, getResolutionForPrintSize, formatResolution } from 
 import { PRINT_FORMATS, type PrintFormat, formatExportDescription } from "@/lib/print-formats";
 import { preparePrintExport, downloadPrintExport } from "@/lib/print-export";
 import { cn } from "@/lib/utils";
-import { ENHANCEMENT_PRESETS } from "@/lib/enhancement-config";
 import { Progress } from "@/components/ui/progress";
-import { Switch } from "@/components/ui/switch";
-import { useUpscale, UPSCALE_LABELS } from "@/hooks/use-upscale";
+import { useUpscale } from "@/hooks/use-upscale";
+import {
+  UPSCALE_MODES,
+  UPSCALE_MODE_OPTIONS,
+  DEFAULT_UPSCALE_MODE,
+  type UpscaleMode,
+} from "@/lib/upscale-modes";
 
 const downloadImage = async (dataUrl: string, filename: string) => {
   const res = await fetch(dataUrl);
@@ -87,8 +91,9 @@ export default function ImageGenerator({
   const [saving, setSaving] = useState(false);
   const [replacing, setReplacing] = useState(false);
   const [exporting, setExporting] = useState(false);
-  const [autoUpscale, setAutoUpscale] = useState(false);
-  const enhancementMode = "hd" as const;
+  // Upscale mode selector — replaces the old hardcoded `enhancementMode = "hd"`
+  // and the simple Auto-Upscale switch with a single explicit choice.
+  const [upscaleMode, setUpscaleMode] = useState<UpscaleMode>(DEFAULT_UPSCALE_MODE);
   const [backgroundStyle, setBackgroundStyle] = useState<"white" | "cream">("white");
   const [paperColor, setPaperColor] = useState<"white" | "cream">("white");
   const [viewVersion, setViewVersion] = useState<"enhanced" | "original" | "compare">("enhanced");
@@ -99,27 +104,56 @@ export default function ImageGenerator({
   const { toast } = useToast();
 
   // Shared upscale hook
-  const { status: upscaleStatus, isRunning: isUpscaling, upscale, reset: resetUpscale } = useUpscale();
+  const {
+    stage: upscaleStage,
+    isRunning: isUpscaling,
+    stageLabel: upscaleStageLabel,
+    progress: upscaleProgress,
+    upscale,
+    reset: resetUpscale,
+  } = useUpscale();
 
   const savedGalleryIdRef = useRef<string | null>(null);
   const upscaleRunId = useRef(0);
 
   const suggestions = isTertiary && styleConfig.prompts.tertiary ? styleConfig.prompts.tertiary : isThemed ? styleConfig.prompts.themed : styleConfig.prompts.freestyle;
   const effectiveAspectRatio = generationMode === "print-ready" ? selectedPrintFormat.aspectRatio : printSize.ratio;
-  const preset = ENHANCEMENT_PRESETS[enhancementMode];
+  const upscaleConfig = UPSCALE_MODES[upscaleMode];
 
-  /** Trigger upscale (shared for auto and manual) */
-  const runUpscale = async (sourceUrl: string, galleryId?: string | null) => {
+  /**
+   * Trigger upscale (shared for auto + manual + re-upscale).
+   * ALWAYS runs from the original/base image, never from an already-upscaled
+   * derivative — that's how we preserve quality across re-upscales.
+   */
+  const runUpscale = async (mode: UpscaleMode, galleryId?: string | null) => {
+    if (mode === "none") return;
+    const sourceUrl = baseImageUrl || imageUrl;
+    if (!sourceUrl) return;
+
     const runId = ++upscaleRunId.current;
     const result = await upscale(sourceUrl, {
+      mode,
       galleryImageId: galleryId || undefined,
     });
-    if (upscaleRunId.current === runId && result) {
-      setEnhancedImageUrl(result);
-      setImageUrl(result);
-      toast({ title: "Upscale complete", description: "Image enhanced to 4× resolution." });
-    } else if (upscaleRunId.current === runId && !result) {
-      toast({ title: "Upscale skipped", description: "Could not upscale — using original image." });
+    if (upscaleRunId.current !== runId) return;
+    if (result) {
+      setEnhancedImageUrl(result.imageUrl);
+      setImageUrl(result.imageUrl);
+      const label = UPSCALE_MODES[mode].shortLabel;
+      toast({
+        title: result.downshifted
+          ? "Upscale complete (downshifted to 4×)"
+          : "Upscale complete",
+        description: result.downshifted
+          ? "8× output exceeded the 8K limit — used tiled 4× instead."
+          : `Image enhanced via ${label} (${result.scale}× resolution).`,
+      });
+    } else {
+      toast({
+        title: "Upscale failed",
+        description: "Could not upscale — original image preserved.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -163,9 +197,9 @@ export default function ImageGenerator({
 
       setLoading(false);
 
-      // Auto-upscale if toggled on
-      if (autoUpscale) {
-        runUpscale(baseUrl, savedGalleryIdRef.current);
+      // Auto-upscale if a real mode is selected
+      if (upscaleMode !== "none") {
+        runUpscale(upscaleMode, savedGalleryIdRef.current);
       }
     } catch (err: any) {
       toast({
@@ -178,7 +212,7 @@ export default function ImageGenerator({
   };
 
   const hasEnhanced = baseImageUrl && enhancedImageUrl && baseImageUrl !== enhancedImageUrl;
-  const canManualUpscale = !!imageUrl && !isUpscaling && !hasEnhanced && !loading;
+  const canManualUpscale = !!imageUrl && !isUpscaling && !loading;
 
   const buildSaveOptions = () => {
     const isPrint = generationMode === "print-ready";
@@ -194,14 +228,14 @@ export default function ImageGenerator({
       targetPpi: isPrint ? 300 : resolution?.ppi,
       targetWidthPx: isPrint ? selectedPrintFormat.preferredPixelWidth : resolution?.widthPx,
       targetHeightPx: isPrint ? selectedPrintFormat.preferredPixelHeight : resolution?.heightPx,
-      enhanced: preset.runUpscale && hasEnhanced,
+      enhanced: !!hasEnhanced,
       printFormatId: isPrint ? selectedPrintFormat.id : undefined,
       generationMode: generationMode,
       exportType: isPrint ? selectedPrintFormat.exportType : undefined,
       // Pass enhanced image URL separately so gallery stores both base + enhanced
       enhancedImageUrl: enhancedImageUrl || undefined,
-      enhancementModel: enhancedImageUrl ? "replicate/real-esrgan" : undefined,
-      upscaleFactor: enhancedImageUrl ? preset.scaleFactor : undefined,
+      enhancementModel: enhancedImageUrl ? upscaleConfig.provider : undefined,
+      upscaleFactor: enhancedImageUrl ? upscaleConfig.scaleFactor : undefined,
     };
   };
 
