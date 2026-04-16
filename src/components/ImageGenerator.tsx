@@ -25,10 +25,14 @@ import { type QualityTarget, getResolutionForPrintSize, formatResolution } from 
 import { PRINT_FORMATS, type PrintFormat, formatExportDescription } from "@/lib/print-formats";
 import { preparePrintExport, downloadPrintExport } from "@/lib/print-export";
 import { cn } from "@/lib/utils";
-import { ENHANCEMENT_PRESETS } from "@/lib/enhancement-config";
 import { Progress } from "@/components/ui/progress";
-import { Switch } from "@/components/ui/switch";
-import { useUpscale, UPSCALE_LABELS } from "@/hooks/use-upscale";
+import { useUpscale } from "@/hooks/use-upscale";
+import {
+  UPSCALE_MODES,
+  UPSCALE_MODE_OPTIONS,
+  DEFAULT_UPSCALE_MODE,
+  type UpscaleMode,
+} from "@/lib/upscale-modes";
 
 const downloadImage = async (dataUrl: string, filename: string) => {
   const res = await fetch(dataUrl);
@@ -87,8 +91,9 @@ export default function ImageGenerator({
   const [saving, setSaving] = useState(false);
   const [replacing, setReplacing] = useState(false);
   const [exporting, setExporting] = useState(false);
-  const [autoUpscale, setAutoUpscale] = useState(false);
-  const enhancementMode = "hd" as const;
+  // Upscale mode selector — replaces the old hardcoded `enhancementMode = "hd"`
+  // and the simple Auto-Upscale switch with a single explicit choice.
+  const [upscaleMode, setUpscaleMode] = useState<UpscaleMode>(DEFAULT_UPSCALE_MODE);
   const [backgroundStyle, setBackgroundStyle] = useState<"white" | "cream">("white");
   const [paperColor, setPaperColor] = useState<"white" | "cream">("white");
   const [viewVersion, setViewVersion] = useState<"enhanced" | "original" | "compare">("enhanced");
@@ -99,27 +104,56 @@ export default function ImageGenerator({
   const { toast } = useToast();
 
   // Shared upscale hook
-  const { status: upscaleStatus, isRunning: isUpscaling, upscale, reset: resetUpscale } = useUpscale();
+  const {
+    stage: upscaleStage,
+    isRunning: isUpscaling,
+    stageLabel: upscaleStageLabel,
+    progress: upscaleProgress,
+    upscale,
+    reset: resetUpscale,
+  } = useUpscale();
 
   const savedGalleryIdRef = useRef<string | null>(null);
   const upscaleRunId = useRef(0);
 
   const suggestions = isTertiary && styleConfig.prompts.tertiary ? styleConfig.prompts.tertiary : isThemed ? styleConfig.prompts.themed : styleConfig.prompts.freestyle;
   const effectiveAspectRatio = generationMode === "print-ready" ? selectedPrintFormat.aspectRatio : printSize.ratio;
-  const preset = ENHANCEMENT_PRESETS[enhancementMode];
+  const upscaleConfig = UPSCALE_MODES[upscaleMode];
 
-  /** Trigger upscale (shared for auto and manual) */
-  const runUpscale = async (sourceUrl: string, galleryId?: string | null) => {
+  /**
+   * Trigger upscale (shared for auto + manual + re-upscale).
+   * ALWAYS runs from the original/base image, never from an already-upscaled
+   * derivative — that's how we preserve quality across re-upscales.
+   */
+  const runUpscale = async (mode: UpscaleMode, galleryId?: string | null) => {
+    if (mode === "none") return;
+    const sourceUrl = baseImageUrl || imageUrl;
+    if (!sourceUrl) return;
+
     const runId = ++upscaleRunId.current;
     const result = await upscale(sourceUrl, {
+      mode,
       galleryImageId: galleryId || undefined,
     });
-    if (upscaleRunId.current === runId && result) {
-      setEnhancedImageUrl(result);
-      setImageUrl(result);
-      toast({ title: "Upscale complete", description: "Image enhanced to 4× resolution." });
-    } else if (upscaleRunId.current === runId && !result) {
-      toast({ title: "Upscale skipped", description: "Could not upscale — using original image." });
+    if (upscaleRunId.current !== runId) return;
+    if (result) {
+      setEnhancedImageUrl(result.imageUrl);
+      setImageUrl(result.imageUrl);
+      const label = UPSCALE_MODES[mode].shortLabel;
+      toast({
+        title: result.downshifted
+          ? "Upscale complete (downshifted to 4×)"
+          : "Upscale complete",
+        description: result.downshifted
+          ? "8× output exceeded the 8K limit — used tiled 4× instead."
+          : `Image enhanced via ${label} (${result.scale}× resolution).`,
+      });
+    } else {
+      toast({
+        title: "Upscale failed",
+        description: "Could not upscale — original image preserved.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -163,9 +197,9 @@ export default function ImageGenerator({
 
       setLoading(false);
 
-      // Auto-upscale if toggled on
-      if (autoUpscale) {
-        runUpscale(baseUrl, savedGalleryIdRef.current);
+      // Auto-upscale if a real mode is selected
+      if (upscaleMode !== "none") {
+        runUpscale(upscaleMode, savedGalleryIdRef.current);
       }
     } catch (err: any) {
       toast({
@@ -178,7 +212,7 @@ export default function ImageGenerator({
   };
 
   const hasEnhanced = baseImageUrl && enhancedImageUrl && baseImageUrl !== enhancedImageUrl;
-  const canManualUpscale = !!imageUrl && !isUpscaling && !hasEnhanced && !loading;
+  const canManualUpscale = !!imageUrl && !isUpscaling && !loading;
 
   const buildSaveOptions = () => {
     const isPrint = generationMode === "print-ready";
@@ -194,14 +228,14 @@ export default function ImageGenerator({
       targetPpi: isPrint ? 300 : resolution?.ppi,
       targetWidthPx: isPrint ? selectedPrintFormat.preferredPixelWidth : resolution?.widthPx,
       targetHeightPx: isPrint ? selectedPrintFormat.preferredPixelHeight : resolution?.heightPx,
-      enhanced: preset.runUpscale && hasEnhanced,
+      enhanced: !!hasEnhanced,
       printFormatId: isPrint ? selectedPrintFormat.id : undefined,
       generationMode: generationMode,
       exportType: isPrint ? selectedPrintFormat.exportType : undefined,
       // Pass enhanced image URL separately so gallery stores both base + enhanced
       enhancedImageUrl: enhancedImageUrl || undefined,
-      enhancementModel: enhancedImageUrl ? "replicate/real-esrgan" : undefined,
-      upscaleFactor: enhancedImageUrl ? preset.scaleFactor : undefined,
+      enhancementModel: enhancedImageUrl ? upscaleConfig.provider : undefined,
+      upscaleFactor: enhancedImageUrl ? upscaleConfig.scaleFactor : undefined,
     };
   };
 
@@ -399,16 +433,33 @@ export default function ImageGenerator({
           );
         })()}
 
-        {/* Upscale 4× Toggle */}
-        <div className="flex items-center justify-between rounded-sm border border-border bg-card p-3">
+        {/* Upscale Mode Selector — replaces hardcoded HD enhancement.
+            Modes: none, Real-ESRGAN 4x, Tiled 4x, Tiled 8x. */}
+        <div className="rounded-sm border border-border bg-card p-3 space-y-2">
           <div className="flex items-center gap-2">
             <ArrowUpCircle className="h-4 w-4 text-primary" />
-            <div>
-              <p className="font-display text-sm font-bold text-foreground">Upscale 4×</p>
-              <p className="font-display text-[10px] text-muted-foreground">Auto-run Real-ESRGAN after generation</p>
-            </div>
+            <p className="font-display text-sm font-bold text-foreground">Upscale</p>
           </div>
-          <Switch checked={autoUpscale} onCheckedChange={setAutoUpscale} />
+          <div className="flex flex-wrap gap-1.5">
+            {UPSCALE_MODE_OPTIONS.map((opt) => (
+              <button
+                key={opt.id}
+                onClick={() => setUpscaleMode(opt.id)}
+                className={cn(
+                  "text-xs px-2.5 py-1 rounded-sm border font-display transition-colors",
+                  upscaleMode === opt.id
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "bg-secondary text-secondary-foreground border-border hover:bg-muted",
+                )}
+                title={opt.description}
+              >
+                {opt.shortLabel}
+              </button>
+            ))}
+          </div>
+          <p className="font-display text-[10px] text-muted-foreground">
+            {upscaleConfig.description}
+          </p>
         </div>
 
         {/* Generation Mode Toggle */}
@@ -537,42 +588,39 @@ export default function ImageGenerator({
         {/* Image preview — visible immediately after generation, even during enhancement */}
         {!isGenerating && imageUrl && (
           <div className="flex flex-col items-center gap-4 p-4 w-full relative">
-            {/* Upscaling overlay — non-blocking */}
+            {/* Upscaling overlay — non-blocking, staged progress */}
             {isUpscaling && (
               <div className="absolute top-2 left-2 right-2 z-10">
                 <div className="flex items-center gap-2 bg-card/90 backdrop-blur-sm border border-primary/30 rounded-sm px-3 py-2 shadow-sm">
                   <Loader2 className="h-3.5 w-3.5 animate-spin text-primary flex-shrink-0" />
                   <div className="flex-1 min-w-0">
-                    <p className="font-display text-xs text-foreground">
-                      {UPSCALE_LABELS[upscaleStatus]}
-                    </p>
-                    <Progress
-                      value={upscaleStatus === "cleanup" ? 40 : 75}
-                      className="h-1 w-full mt-1"
-                    />
+                    <p className="font-display text-xs text-foreground">{upscaleStageLabel}</p>
+                    <Progress value={upscaleProgress} className="h-1 w-full mt-1" />
                   </div>
                   <span className="font-display text-[10px] text-muted-foreground flex-shrink-0">
-                    4× upscale
+                    {upscaleConfig.shortLabel}
                   </span>
                 </div>
               </div>
             )}
 
             {/* Upscale complete badge */}
-            {upscaleStatus === "done" && (
+            {(upscaleStage === "done" || upscaleStage === "downshifted") && (
               <div className="absolute top-2 left-2 z-10">
                 <div className="flex items-center gap-1.5 bg-primary/10 border border-primary/30 rounded-sm px-2.5 py-1.5 shadow-sm animate-in fade-in duration-300">
                   <Sparkles className="h-3 w-3 text-primary" />
-                  <span className="font-display text-[10px] text-primary font-bold">Upscaled · 4× resolution</span>
+                  <span className="font-display text-[10px] text-primary font-bold">
+                    Upscaled · {upscaleStage === "downshifted" ? "tile 4× (downshifted)" : `${upscaleConfig.scaleFactor}× resolution`}
+                  </span>
                 </div>
               </div>
             )}
 
             {/* Upscale failed badge */}
-            {upscaleStatus === "failed" && (
+            {upscaleStage === "failed" && (
               <div className="absolute top-2 left-2 z-10">
                 <div className="flex items-center gap-1.5 bg-muted border border-border rounded-sm px-2.5 py-1.5 shadow-sm animate-in fade-in duration-300">
-                  <span className="font-display text-[10px] text-muted-foreground">Upscale skipped</span>
+                  <span className="font-display text-[10px] text-muted-foreground">Upscale failed — original kept</span>
                 </div>
               </div>
             )}
@@ -613,15 +661,26 @@ export default function ImageGenerator({
                   )}
                 </Button>
               )}
-              {/* Manual Upscale 4× button */}
+              {/* Manual Upscale buttons — let users run any of the upscale modes
+                  on demand (always re-running from the base image). If an
+                  enhanced asset already exists, allow re-running with a different
+                  mode for higher quality. */}
               {canManualUpscale && (
-                <Button
-                  variant="outline" size="sm"
-                  onClick={() => runUpscale(baseImageUrl || imageUrl, savedGalleryIdRef.current)}
-                  className="font-display text-xs tracking-wider border-primary/30 text-primary hover:bg-primary/10"
-                >
-                  <ArrowUpCircle className="mr-2 h-4 w-4" /> Upscale 4×
-                </Button>
+                <div className="flex items-center gap-1 border border-border rounded-sm p-0.5">
+                  {UPSCALE_MODE_OPTIONS.filter((o) => o.runs).map((opt) => (
+                    <Button
+                      key={opt.id}
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => runUpscale(opt.id, savedGalleryIdRef.current)}
+                      className="font-display text-xs h-7 px-2 text-primary hover:bg-primary/10"
+                      title={opt.description}
+                    >
+                      <ArrowUpCircle className="mr-1 h-3 w-3" />
+                      {opt.shortLabel}
+                    </Button>
+                  ))}
+                </div>
               )}
               {hasEnhanced && (
                 <span className="text-xs text-primary flex items-center gap-1 font-display">

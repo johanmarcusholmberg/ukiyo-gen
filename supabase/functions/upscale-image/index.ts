@@ -6,96 +6,97 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+/**
+ * Mode-based upscale dispatcher.
+ *
+ * Modes:
+ *   - realesrgan_4x  → Replicate Real-ESRGAN x4 (fast, single-pass super-resolution)
+ *   - tile_4x        → Replicate Clarity Upscaler (SDXL + ControlNet tile, 4x)
+ *   - tile_8x        → Clarity Upscaler at 8x (with ~8K hard cap → downshift to 4x)
+ *
+ * The frontend always sends one shared body: { imageUrl, mode }
+ */
+
+type UpscaleMode = "none" | "realesrgan_4x" | "tile_4x" | "tile_8x";
+
+const TILE_8X_MAX_LONG_SIDE = 8192;
+
 /* ------------------------------------------------------------------ */
-/*  Stage 1 — AI Artifact Cleanup (Gemini vision)                     */
-/*  Focuses ONLY on cleaning artifacts, NOT on upscaling.             */
+/*  Helpers                                                            */
 /* ------------------------------------------------------------------ */
 
-function buildCleanupPrompt(): string {
-  return `CRITICAL IMAGE CLEANUP INSTRUCTIONS:
-
-You are an image artifact cleanup specialist. Your ONLY task is to clean this image — do NOT upscale, resize, or change composition.
-
-DO:
-- Remove compression artifacts (JPEG blocking, color banding, mosquito noise)
-- Clean up halos and ringing around edges
-- Smooth out noise in flat color areas while preserving intended texture
-- Sharpen soft edges and improve line clarity
-- Stabilize textures that appear grainy or inconsistent
-- Fix color posterization in gradients
-- Clean up any halftone or moiré patterns that are artifacts (not intentional)
-
-DO NOT:
-- Change the subject, style, composition, or color palette
-- Add new elements or remove existing ones
-- Upscale or resize the image
-- Alter the artistic style, mood, or framing
-- Remove intentional textures (paper grain, brush strokes, screen print dots)
-- Crop, reframe, or alter borders/frames within the artwork
-- Apply plastic smoothing or over-sharpen
-
-EDGE SAFETY:
-- All intentional borders, edge lines, and frame elements are part of the artwork
-- Every pixel at the boundary must be preserved
-- Thin lines near image edges must NOT be removed
-
-Output the EXACT same image, same size, but with cleaner detail and fewer artifacts.`;
+async function pollReplicate(
+  predictionId: string,
+  apiToken: string,
+  maxAttempts = 90,
+  intervalMs = 2000,
+): Promise<any> {
+  const pollUrl = `https://api.replicate.com/v1/predictions/${predictionId}`;
+  for (let i = 0; i < maxAttempts; i++) {
+    await new Promise((r) => setTimeout(r, intervalMs));
+    const res = await fetch(pollUrl, { headers: { Authorization: `Bearer ${apiToken}` } });
+    if (!res.ok) {
+      console.error("Replicate poll error:", res.status, await res.text());
+      return null;
+    }
+    const pred = await res.json();
+    if (pred.status === "succeeded") return pred;
+    if (pred.status === "failed" || pred.status === "canceled") {
+      console.error("Replicate prediction failed:", pred.error);
+      return null;
+    }
+  }
+  console.error("Replicate prediction timed out");
+  return null;
 }
 
-async function runArtifactCleanup(imageUrl: string, apiKey: string): Promise<string | null> {
-  console.log("Stage 1: Running artifact cleanup…");
+async function fetchImageDimensions(url: string): Promise<{ w: number; h: number } | null> {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const buf = new Uint8Array(await res.arrayBuffer());
 
-  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: "google/gemini-3-pro-image-preview",
-      messages: [
-        {
-          role: "user",
-          content: [
-            { type: "image_url", image_url: { url: imageUrl } },
-            { type: "text", text: buildCleanupPrompt() },
-          ],
-        },
-      ],
-      modalities: ["image", "text"],
-    }),
-  });
+    // PNG: 8-byte signature, then IHDR chunk at offset 16 (width) & 20 (height).
+    if (buf.length > 24 && buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47) {
+      const w = (buf[16] << 24) | (buf[17] << 16) | (buf[18] << 8) | buf[19];
+      const h = (buf[20] << 24) | (buf[21] << 16) | (buf[22] << 8) | buf[23];
+      return { w, h };
+    }
 
-  if (!response.ok) {
-    const t = await response.text();
-    console.error("Cleanup API error:", response.status, t);
-    return null;
+    // JPEG: scan for SOF marker (FFC0..FFCF except FFC4/FFC8/FFCC).
+    if (buf[0] === 0xff && buf[1] === 0xd8) {
+      let i = 2;
+      while (i < buf.length - 9) {
+        if (buf[i] !== 0xff) { i++; continue; }
+        const marker = buf[i + 1];
+        if (
+          marker >= 0xc0 && marker <= 0xcf &&
+          marker !== 0xc4 && marker !== 0xc8 && marker !== 0xcc
+        ) {
+          const h = (buf[i + 5] << 8) | buf[i + 6];
+          const w = (buf[i + 7] << 8) | buf[i + 8];
+          return { w, h };
+        }
+        const segLen = (buf[i + 2] << 8) | buf[i + 3];
+        i += 2 + segLen;
+      }
+    }
+  } catch (err) {
+    console.warn("Could not read image dimensions:", err);
   }
-
-  const data = await response.json();
-  const cleanedUrl = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
-
-  if (!cleanedUrl) {
-    console.warn("Cleanup returned no image, skipping cleanup stage");
-    return null;
-  }
-
-  console.log("Stage 1: Artifact cleanup complete");
-  return cleanedUrl;
+  return null;
 }
 
 /* ------------------------------------------------------------------ */
-/*  Stage 2 — True Super-Resolution via Replicate Real-ESRGAN         */
+/*  Mode: Real-ESRGAN 4x (fast super-resolution)                       */
 /* ------------------------------------------------------------------ */
 
-async function runSuperResolution(
+async function runRealESRGAN(
   imageUrl: string,
   scaleFactor: number,
   apiToken: string,
 ): Promise<string | null> {
-  console.log(`Stage 2: Running Real-ESRGAN super-resolution (${scaleFactor}x)…`);
-
-  // Create prediction
+  console.log(`[realesrgan] running ${scaleFactor}x super-resolution…`);
   const createRes = await fetch("https://api.replicate.com/v1/predictions", {
     method: "POST",
     headers: {
@@ -114,52 +115,85 @@ async function runSuperResolution(
   });
 
   if (!createRes.ok) {
-    const t = await createRes.text();
-    console.error("Replicate create error:", createRes.status, t);
+    console.error("Real-ESRGAN create error:", createRes.status, await createRes.text());
     return null;
   }
 
   let prediction = await createRes.json();
-
-  // If the Prefer: wait header worked, we may already have output
   if (prediction.status === "succeeded" && prediction.output) {
-    console.log("Stage 2: Super-resolution complete (immediate)");
-    return prediction.output;
+    return typeof prediction.output === "string" ? prediction.output : prediction.output[0];
   }
 
-  // Otherwise poll for completion (max ~120s)
-  const predictionId = prediction.id;
-  const pollUrl = `https://api.replicate.com/v1/predictions/${predictionId}`;
-  const maxAttempts = 60;
+  prediction = await pollReplicate(prediction.id, apiToken);
+  if (!prediction) return null;
+  return typeof prediction.output === "string" ? prediction.output : prediction.output?.[0] ?? null;
+}
 
-  for (let i = 0; i < maxAttempts; i++) {
-    await new Promise((r) => setTimeout(r, 2000));
+/* ------------------------------------------------------------------ */
+/*  Mode: Tiled SDXL via Clarity Upscaler                              */
+/* ------------------------------------------------------------------ */
 
-    const pollRes = await fetch(pollUrl, {
-      headers: { Authorization: `Bearer ${apiToken}` },
-    });
+async function runClarityUpscaler(
+  imageUrl: string,
+  scaleFactor: number,
+  apiToken: string,
+): Promise<string | null> {
+  console.log(`[clarity] running tiled SDXL ${scaleFactor}x…`);
 
-    if (!pollRes.ok) {
-      const t = await pollRes.text();
-      console.error("Replicate poll error:", pollRes.status, t);
-      return null;
-    }
+  // philz1337x/clarity-upscaler — SDXL + ControlNet tile + native overlapping tiles
+  const createRes = await fetch("https://api.replicate.com/v1/predictions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiToken}`,
+      "Content-Type": "application/json",
+      Prefer: "wait",
+    },
+    body: JSON.stringify({
+      version: "dfad41707589d68ecdccd1dfa600d55a208f9310748e44bfe35b4a6291453d5e",
+      input: {
+        image: imageUrl,
+        scale_factor: scaleFactor,
+        // Lower creativity = more faithful to source (preserves composition,
+        // borders, and frame elements). Higher resemblance = same.
+        creativity: 0.3,
+        resemblance: 0.75,
+        dynamic: 6,
+        sharpen: 0,
+        handfix: "disabled",
+        pattern: false,
+        // Conservative tile size keeps memory under control on large outputs.
+        tiling_width: 112,
+        tiling_height: 144,
+        sd_model: "juggernaut_reborn.safetensors [338b85bc4f]",
+        scheduler: "DPM++ 3M SDE Karras",
+        num_inference_steps: 18,
+        seed: 1337,
+        downscaling: false,
+        downscaling_resolution: 768,
+        lora_links: "",
+        custom_sd_model: "",
+        negative_prompt:
+          "(worst quality, low quality, normal quality:2), text, watermark, signature, blurry, deformed, jpeg artifacts",
+        prompt:
+          "masterpiece, best quality, highres, intricate detail, clean edges, preserve composition",
+      },
+    }),
+  });
 
-    prediction = await pollRes.json();
-
-    if (prediction.status === "succeeded") {
-      console.log("Stage 2: Super-resolution complete");
-      return prediction.output;
-    }
-
-    if (prediction.status === "failed" || prediction.status === "canceled") {
-      console.error("Replicate prediction failed:", prediction.error);
-      return null;
-    }
+  if (!createRes.ok) {
+    console.error("Clarity create error:", createRes.status, await createRes.text());
+    return null;
   }
 
-  console.error("Replicate prediction timed out");
-  return null;
+  let prediction = await createRes.json();
+  if (prediction.status === "succeeded" && prediction.output) {
+    return Array.isArray(prediction.output) ? prediction.output[0] : prediction.output;
+  }
+
+  // Tiled jobs can take 1–3 minutes; poll up to ~5 minutes.
+  prediction = await pollReplicate(prediction.id, apiToken, 150, 2000);
+  if (!prediction) return null;
+  return Array.isArray(prediction.output) ? prediction.output[0] : prediction.output ?? null;
 }
 
 /* ------------------------------------------------------------------ */
@@ -170,11 +204,14 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const {
-      imageUrl,
-      strength = "medium",
-      scaleFactor: requestedScale,
-    } = await req.json();
+    const body = await req.json();
+    const imageUrl: string | undefined = body.imageUrl;
+
+    // Accept new mode-based API + legacy fields for backwards compatibility.
+    let mode: UpscaleMode = body.mode ?? "realesrgan_4x";
+    if (!mode && body.scaleFactor) {
+      mode = body.scaleFactor >= 4 ? "realesrgan_4x" : "realesrgan_4x";
+    }
 
     if (!imageUrl || typeof imageUrl !== "string") {
       return new Response(
@@ -183,66 +220,87 @@ serve(async (req) => {
       );
     }
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+    if (mode === "none") {
+      return new Response(
+        JSON.stringify({
+          imageUrl,
+          pipeline: { mode: "none", scale: 1, provider: "none", downshifted: false },
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
 
     const REPLICATE_API_TOKEN = Deno.env.get("REPLICATE_API_TOKEN");
-    if (!REPLICATE_API_TOKEN) throw new Error("REPLICATE_API_TOKEN is not configured");
-
-    // Determine scale factor from strength or explicit request
-    const scale = requestedScale ?? (strength === "strong" ? 4 : 2);
-
-    console.log(`Enhancement pipeline: strength=${strength}, scale=${scale}x`);
-
-    // ---- Stage 1: Artifact Cleanup ----
-    let cleanedUrl: string | null = null;
-    try {
-      cleanedUrl = await runArtifactCleanup(imageUrl, LOVABLE_API_KEY);
-    } catch (err) {
-      console.warn("Artifact cleanup failed, continuing with original:", err);
-    }
-
-    const upscaleInput = cleanedUrl || imageUrl;
-
-    // ---- Stage 2: True Super-Resolution ----
-    let enhancedUrl: string | null = null;
-    try {
-      enhancedUrl = await runSuperResolution(upscaleInput, scale, REPLICATE_API_TOKEN);
-    } catch (err) {
-      console.warn("Super-resolution failed:", err);
-    }
-
-    // Return the best available result
-    const finalUrl = enhancedUrl || cleanedUrl || imageUrl;
-
-    if (!enhancedUrl) {
-      console.warn("Super-resolution unavailable — returning cleanup-only or original");
-    }
-
-    return new Response(
-      JSON.stringify({
-        imageUrl: finalUrl,
-        pipeline: {
-          cleanup: !!cleanedUrl,
-          superResolution: !!enhancedUrl,
-          scale: enhancedUrl ? scale : 1,
-          provider: enhancedUrl ? "replicate/real-esrgan" : "none",
-        },
-      }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
-    );
-  } catch (e) {
-    console.error("upscale-image error:", e);
-
-    if (e.message?.includes("REPLICATE_API_TOKEN")) {
+    if (!REPLICATE_API_TOKEN) {
       return new Response(
         JSON.stringify({ error: "Upscaling service not configured. Please add your Replicate API token." }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
+    let downshifted = false;
+    let appliedScale = 4;
+    let provider = "replicate/real-esrgan";
+    let outputUrl: string | null = null;
+
+    if (mode === "realesrgan_4x") {
+      appliedScale = 4;
+      provider = "replicate/real-esrgan";
+      outputUrl = await runRealESRGAN(imageUrl, 4, REPLICATE_API_TOKEN);
+    } else if (mode === "tile_4x") {
+      appliedScale = 4;
+      provider = "replicate/clarity-upscaler";
+      outputUrl = await runClarityUpscaler(imageUrl, 4, REPLICATE_API_TOKEN);
+    } else if (mode === "tile_8x") {
+      provider = "replicate/clarity-upscaler";
+      // Pre-flight size check: if 8x would exceed our 8K long-side cap,
+      // safely downshift to 4x rather than hang or crash.
+      const dims = await fetchImageDimensions(imageUrl);
+      const longSide = dims ? Math.max(dims.w, dims.h) : 0;
+      if (longSide && longSide * 8 > TILE_8X_MAX_LONG_SIDE) {
+        console.log(`[tile_8x] source ${dims!.w}x${dims!.h} → 8x would exceed ${TILE_8X_MAX_LONG_SIDE}px, downshifting to 4x`);
+        downshifted = true;
+        appliedScale = 4;
+        outputUrl = await runClarityUpscaler(imageUrl, 4, REPLICATE_API_TOKEN);
+      } else {
+        appliedScale = 8;
+        outputUrl = await runClarityUpscaler(imageUrl, 8, REPLICATE_API_TOKEN);
+      }
+    } else {
+      return new Response(
+        JSON.stringify({ error: `Unknown upscale mode: ${mode}` }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    if (!outputUrl) {
+      return new Response(
+        JSON.stringify({
+          error: "Upscale failed — original image preserved.",
+          imageUrl,
+          pipeline: { mode, scale: 1, provider, downshifted: false, failed: true },
+        }),
+        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
     return new Response(
-      JSON.stringify({ error: "An unexpected error occurred. Please try again." }),
+      JSON.stringify({
+        imageUrl: outputUrl,
+        pipeline: {
+          mode,
+          appliedMode: downshifted ? "tile_4x" : mode,
+          scale: appliedScale,
+          provider,
+          downshifted,
+        },
+      }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+  } catch (e: any) {
+    console.error("upscale-image error:", e);
+    return new Response(
+      JSON.stringify({ error: e.message || "An unexpected error occurred. Please try again." }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }

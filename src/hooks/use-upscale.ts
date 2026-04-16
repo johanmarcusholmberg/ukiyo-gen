@@ -1,92 +1,146 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { updateEnhancedAsset } from "@/lib/gallery";
-import { ENHANCEMENT_PROVIDER } from "@/lib/enhancement-config";
+import {
+  UPSCALE_MODES,
+  UPSCALE_STAGE_LABELS,
+  UPSCALE_STAGE_PROGRESS,
+  type UpscaleMode,
+  type UpscaleStage,
+} from "@/lib/upscale-modes";
 
-export type UpscaleStatus = "idle" | "cleanup" | "upscaling" | "done" | "failed";
-
-export const UPSCALE_LABELS: Record<UpscaleStatus, string> = {
-  idle: "",
-  cleanup: "Cleaning artifacts…",
-  upscaling: "Upscaling 4×…",
-  done: "Upscale complete",
-  failed: "Upscale failed",
-};
+// Backwards-compatible re-exports (older callers expect these symbols)
+export type UpscaleStatus = UpscaleStage;
+export const UPSCALE_LABELS = UPSCALE_STAGE_LABELS;
 
 export interface UpscaleResult {
   imageUrl: string;
-  pipeline: {
-    cleanup: boolean;
-    superResolution: boolean;
-    scale: number;
-    provider: string;
-  };
+  mode: UpscaleMode;
+  scale: number;
+  provider: string;
+  /** True if the requested mode was downshifted (e.g. 8x → 4x for size cap) */
+  downshifted: boolean;
+}
+
+interface UpscaleOptions {
+  /** If provided, persist the upscaled asset to this gallery image record */
+  galleryImageId?: string;
+  /** Mode to run. Defaults to realesrgan_4x for backward compatibility. */
+  mode?: UpscaleMode;
 }
 
 /**
- * Shared hook for Real-ESRGAN 4× upscaling.
- * Used by: ImageGenerator (auto + manual), Gallery (manual).
+ * Shared upscale abstraction.
+ *
+ * One frontend entry point used by:
+ *   - automatic post-generation upscale
+ *   - manual upscale after generation
+ *   - manual upscale from gallery
+ *
+ * Always re-runs from the source URL provided (callers must pass the original/base
+ * image, never an already-upscaled derivative).
  */
 export function useUpscale() {
-  const [status, setStatus] = useState<UpscaleStatus>("idle");
+  const [stage, setStage] = useState<UpscaleStage>("idle");
+  const [activeMode, setActiveMode] = useState<UpscaleMode>("none");
+  const stageTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const reset = useCallback(() => setStatus("idle"), []);
-
-  /**
-   * Run 4× upscale on an image URL.
-   * Returns the enhanced URL on success, null on failure.
-   * Optionally persists to gallery if galleryImageId is provided.
-   */
-  const upscale = useCallback(async (
-    imageUrl: string,
-    opts?: { galleryImageId?: string },
-  ): Promise<string | null> => {
-    setStatus("cleanup");
-    try {
-      const { data, error } = await supabase.functions.invoke(
-        ENHANCEMENT_PROVIDER.edgeFunction,
-        {
-          body: {
-            imageUrl,
-            strength: "strong",
-            scaleFactor: 4,
-          },
-        },
-      );
-
-      if (error) throw error;
-
-      if (data?.pipeline?.superResolution) {
-        setStatus("upscaling");
-      }
-
-      if (!data?.imageUrl) {
-        setStatus("failed");
-        return null;
-      }
-
-      // Persist to gallery record if we have an ID
-      if (opts?.galleryImageId) {
-        try {
-          await updateEnhancedAsset(opts.galleryImageId, data.imageUrl, {
-            enhancementModel: data.pipeline?.provider || "replicate/real-esrgan",
-            upscaleFactor: data.pipeline?.scale || 4,
-          });
-        } catch (err) {
-          console.warn("Failed to persist upscaled asset to gallery:", err);
-        }
-      }
-
-      setStatus("done");
-      return data.imageUrl;
-    } catch (err) {
-      console.error("Upscale failed:", err);
-      setStatus("failed");
-      return null;
+  const reset = useCallback(() => {
+    if (stageTimer.current) {
+      clearInterval(stageTimer.current);
+      stageTimer.current = null;
     }
+    setStage("idle");
+    setActiveMode("none");
   }, []);
 
-  const isRunning = status === "cleanup" || status === "upscaling";
+  const upscale = useCallback(
+    async (sourceUrl: string, opts?: UpscaleOptions): Promise<UpscaleResult | null> => {
+      const mode: UpscaleMode = opts?.mode ?? "realesrgan_4x";
+      if (mode === "none") return null;
 
-  return { status, isRunning, upscale, reset, setStatus };
+      setActiveMode(mode);
+      setStage("preparing");
+
+      // Drive a soft-progress staged animation while the edge function runs.
+      // The backend reports a single final result, so we simulate progressive
+      // stages so the UI never feels frozen.
+      const stages: UpscaleStage[] = UPSCALE_MODES[mode].tiled
+        ? ["preparing", "cleanup", "tiling", "upscaling", "stitching"]
+        : ["preparing", "cleanup", "upscaling"];
+      let stageIdx = 0;
+      stageTimer.current = setInterval(() => {
+        stageIdx = Math.min(stageIdx + 1, stages.length - 1);
+        setStage(stages[stageIdx]);
+      }, 4000);
+
+      try {
+        const { data, error } = await supabase.functions.invoke("upscale-image", {
+          body: { imageUrl: sourceUrl, mode },
+        });
+
+        if (stageTimer.current) {
+          clearInterval(stageTimer.current);
+          stageTimer.current = null;
+        }
+
+        if (error) throw error;
+        if (!data?.imageUrl) {
+          setStage("failed");
+          return null;
+        }
+
+        const result: UpscaleResult = {
+          imageUrl: data.imageUrl,
+          mode: data.pipeline?.mode ?? mode,
+          scale: data.pipeline?.scale ?? UPSCALE_MODES[mode].scaleFactor,
+          provider: data.pipeline?.provider ?? UPSCALE_MODES[mode].provider,
+          downshifted: !!data.pipeline?.downshifted,
+        };
+
+        // Persist to gallery record if requested
+        if (opts?.galleryImageId) {
+          setStage("saving");
+          try {
+            await updateEnhancedAsset(opts.galleryImageId, result.imageUrl, {
+              enhancementModel: result.provider,
+              upscaleFactor: result.scale,
+              upscaleMode: result.mode,
+            });
+          } catch (err) {
+            console.warn("Failed to persist upscaled asset to gallery:", err);
+          }
+        }
+
+        setStage(result.downshifted ? "downshifted" : "done");
+        return result;
+      } catch (err) {
+        if (stageTimer.current) {
+          clearInterval(stageTimer.current);
+          stageTimer.current = null;
+        }
+        console.error("Upscale failed:", err);
+        setStage("failed");
+        return null;
+      }
+    },
+    [],
+  );
+
+  const isRunning = ["preparing", "cleanup", "tiling", "upscaling", "stitching", "saving"].includes(stage);
+  const stageLabel = UPSCALE_STAGE_LABELS[stage];
+  const progress = UPSCALE_STAGE_PROGRESS[stage];
+
+  return {
+    stage,
+    /** Backwards-compat alias for older callers that read `status` */
+    status: stage,
+    activeMode,
+    isRunning,
+    stageLabel,
+    progress,
+    upscale,
+    reset,
+    setStage,
+  };
 }

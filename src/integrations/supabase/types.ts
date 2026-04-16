@@ -84,6 +84,7 @@ export type Database = {
           enhanced_width_px: number | null
           enhancement_model: string | null
           export_height: number | null
+          export_preferred_asset: string | null
           export_ready: boolean | null
           export_storage_path: string | null
           export_type: string | null
@@ -92,6 +93,7 @@ export type Database = {
           id: string
           master_storage_path: string | null
           mode: string
+          original_storage_path: string | null
           padding_mode: string | null
           print_format_id: string | null
           print_size: string | null
@@ -106,6 +108,8 @@ export type Database = {
           upscale_applied: boolean | null
           upscale_factor: number | null
           upscale_method: string | null
+          upscale_mode: string | null
+          upscaled_at: string | null
         }
         Insert: {
           actual_height_px?: number | null
@@ -122,6 +126,7 @@ export type Database = {
           enhanced_width_px?: number | null
           enhancement_model?: string | null
           export_height?: number | null
+          export_preferred_asset?: string | null
           export_ready?: boolean | null
           export_storage_path?: string | null
           export_type?: string | null
@@ -130,6 +135,7 @@ export type Database = {
           id?: string
           master_storage_path?: string | null
           mode?: string
+          original_storage_path?: string | null
           padding_mode?: string | null
           print_format_id?: string | null
           print_size?: string | null
@@ -144,6 +150,8 @@ export type Database = {
           upscale_applied?: boolean | null
           upscale_factor?: number | null
           upscale_method?: string | null
+          upscale_mode?: string | null
+          upscaled_at?: string | null
         }
         Update: {
           actual_height_px?: number | null
@@ -160,6 +168,7 @@ export type Database = {
           enhanced_width_px?: number | null
           enhancement_model?: string | null
           export_height?: number | null
+          export_preferred_asset?: string | null
           export_ready?: boolean | null
           export_storage_path?: string | null
           export_type?: string | null
@@ -168,6 +177,7 @@ export type Database = {
           id?: string
           master_storage_path?: string | null
           mode?: string
+          original_storage_path?: string | null
           padding_mode?: string | null
           print_format_id?: string | null
           print_size?: string | null
@@ -182,6 +192,8 @@ export type Database = {
           upscale_applied?: boolean | null
           upscale_factor?: number | null
           upscale_method?: string | null
+          upscale_mode?: string | null
+          upscaled_at?: string | null
         }
         Relationships: []
       }
