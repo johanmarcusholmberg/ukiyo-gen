@@ -1,9 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import {
-  ImageMagick,
-  initialize,
-  MagickFormat,
-} from "https://esm.sh/@imagemagick/magick-wasm@0.0.30";
+import { Image } from "https://deno.land/x/imagescript@1.2.17/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -33,22 +29,8 @@ const TILE_8X_MAX_LONG_SIDE = 12288;
 const TILE_8X_MIN_SHORT_SIDE = 512;
 
 /* ------------------------------------------------------------------ */
-/*  ImageMagick init (one-shot, cached at module scope)               */
+/*  (No external init needed — imagescript is pure TS/Wasm)            */
 /* ------------------------------------------------------------------ */
-
-let magickReady: Promise<void> | null = null;
-async function ensureMagick(): Promise<void> {
-  if (!magickReady) {
-    magickReady = (async () => {
-      const wasmRes = await fetch(
-        "https://esm.sh/@imagemagick/magick-wasm@0.0.30/dist/magick.wasm",
-      );
-      const wasmBytes = new Uint8Array(await wasmRes.arrayBuffer());
-      await initialize(wasmBytes);
-    })();
-  }
-  return magickReady;
-}
 
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
@@ -118,9 +100,11 @@ async function fetchImageDimensions(url: string): Promise<{ w: number; h: number
 
 /**
  * Pre-downscale a source image to fit within `targetLongSide` on its longest
- * dimension, using Lanczos resampling (sharpest reasonable filter for downscale).
+ * dimension, using cubic resampling via imagescript (Deno-native, no native
+ * deps). Cubic is sharper than bilinear and well-suited for moderate
+ * downscales — Clarity will re-add detail downstream during the 8× pass.
  *
- * Returns a public data URL (PNG) suitable for handing to Replicate, plus the
+ * Returns a base64 data URL (PNG) suitable for handing to Replicate, plus the
  * new dimensions. Returns null on failure (caller should fall back).
  */
 async function preDownscaleToFit(
@@ -128,50 +112,38 @@ async function preDownscaleToFit(
   targetLongSide: number,
 ): Promise<{ dataUrl: string; w: number; h: number } | null> {
   try {
-    await ensureMagick();
     const res = await fetch(sourceUrl);
     if (!res.ok) {
       console.error("[predownscale] failed to fetch source:", res.status);
       return null;
     }
     const inputBytes = new Uint8Array(await res.arrayBuffer());
+    const img = await Image.decode(inputBytes);
+    const srcW = img.width;
+    const srcH = img.height;
+    const longSide = Math.max(srcW, srcH);
+    const ratio = targetLongSide / longSide;
+    const newW = Math.max(1, Math.round(srcW * ratio));
+    const newH = Math.max(1, Math.round(srcH * ratio));
 
-    return await new Promise((resolve) => {
-      ImageMagick.read(inputBytes, (img) => {
-        const srcW = img.width;
-        const srcH = img.height;
-        const longSide = Math.max(srcW, srcH);
-        const ratio = targetLongSide / longSide;
-        const newW = Math.max(1, Math.round(srcW * ratio));
-        const newH = Math.max(1, Math.round(srcH * ratio));
+    img.resize(newW, newH, Image.RESIZE_AUTO, Image.RESIZE_BICUBIC);
+    const pngBytes = await img.encode(); // PNG by default
 
-        // Lanczos = sharpest standard downscale filter. magick-wasm exposes
-        // it via FilterType.Lanczos (numeric 22 in ImageMagick's enum).
-        // Using the numeric form avoids importing the FilterType binding.
-        try {
-          (img as any).filterType = 22; // Lanczos
-        } catch { /* ignore — resize will still pick a sane default */ }
-        img.resize(newW, newH);
-
-        img.write(MagickFormat.Png, (data) => {
-          // Build a data URL Replicate can fetch.
-          let binary = "";
-          const chunk = 0x8000;
-          for (let i = 0; i < data.length; i += chunk) {
-            binary += String.fromCharCode.apply(
-              null,
-              data.subarray(i, i + chunk) as unknown as number[],
-            );
-          }
-          const b64 = btoa(binary);
-          resolve({
-            dataUrl: `data:image/png;base64,${b64}`,
-            w: newW,
-            h: newH,
-          });
-        });
-      });
-    });
+    // Base64-encode in chunks to avoid call-stack limits on large images.
+    let binary = "";
+    const chunk = 0x8000;
+    for (let i = 0; i < pngBytes.length; i += chunk) {
+      binary += String.fromCharCode.apply(
+        null,
+        pngBytes.subarray(i, i + chunk) as unknown as number[],
+      );
+    }
+    const b64 = btoa(binary);
+    return {
+      dataUrl: `data:image/png;base64,${b64}`,
+      w: newW,
+      h: newH,
+    };
   } catch (err) {
     console.error("[predownscale] error:", err);
     return null;
