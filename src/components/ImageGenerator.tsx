@@ -708,26 +708,20 @@ export default function ImageGenerator({
                   )}
                 </Button>
               )}
-              {/* Manual Upscale buttons — let users run any of the upscale modes
-                  on demand (always re-running from the base image). If an
-                  enhanced asset already exists, allow re-running with a different
-                  mode for higher quality. */}
+              {/* Manual Upscale — unified UpscaleBadge. Picking a mode here
+                  immediately re-runs the upscale on the original/base image. */}
               {canManualUpscale && (
-                <div className="flex items-center gap-1 border border-border rounded-sm p-0.5">
-                  {UPSCALE_MODE_OPTIONS.filter((o) => o.runs).map((opt) => (
-                    <Button
-                      key={opt.id}
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => runUpscale(opt.id, savedGalleryIdRef.current)}
-                      className="font-display text-xs h-7 px-2 text-primary hover:bg-primary/10"
-                      title={opt.description}
-                    >
-                      <ArrowUpCircle className="mr-1 h-3 w-3" />
-                      {opt.shortLabel}
-                    </Button>
-                  ))}
-                </div>
+                <UpscaleBadge
+                  value={upscaleMode}
+                  onChange={setUpscaleMode}
+                  surface="manual"
+                  onRun={(m) => runUpscale(m, savedGalleryIdRef.current)}
+                  isRunning={isUpscaling}
+                  stageLabel={upscaleStageLabel}
+                  progress={upscaleProgress}
+                  appliedMode={hasEnhanced ? upscaleMode : null}
+                  compact
+                />
               )}
               {hasEnhanced && (
                 <span className="text-xs text-primary flex items-center gap-1 font-display">
