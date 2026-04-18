@@ -272,6 +272,11 @@ export default function ImageGenerator({
       enhancedImageUrl: enhancedImageUrl || undefined,
       enhancementModel: enhancedImageUrl ? upscaleConfig.provider : undefined,
       upscaleFactor: enhancedImageUrl ? upscaleConfig.scaleFactor : undefined,
+      // Phase 1: generator provider metadata
+      generationProvider: lastProviderUsed || undefined,
+      generationModel: lastModelUsed || undefined,
+      providerStrategy: lastStrategyUsed || undefined,
+      fallbackUsed: lastFallbackUsed,
     };
   };
 
@@ -592,6 +597,22 @@ export default function ImageGenerator({
                 </button>
               </div>
             </div>
+          )}
+        </div>
+
+        {/* Phase 1: Generator selector (compact badge → popover) */}
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <GeneratorBadge
+            value={generatorPref}
+            onChange={setGeneratorPref}
+            lastUsedProvider={lastProviderUsed}
+            lastFallbackUsed={lastFallbackUsed}
+          />
+          {lastProviderUsed && (
+            <span className="font-display text-[10px] text-muted-foreground">
+              Last: <span className="text-foreground">{lastProviderUsed}</span>
+              {lastFallbackUsed ? " · fallback" : ""}
+            </span>
           )}
         </div>
 
