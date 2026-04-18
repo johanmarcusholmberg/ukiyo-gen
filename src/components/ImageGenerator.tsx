@@ -33,6 +33,11 @@ import {
   DEFAULT_UPSCALE_MODE,
   type UpscaleMode,
 } from "@/lib/upscale-modes";
+import GeneratorBadge from "@/components/GeneratorBadge";
+import {
+  type GeneratorPreference,
+  loadGeneratorPreference,
+} from "@/lib/generators";
 
 const downloadImage = async (dataUrl: string, filename: string) => {
   const res = await fetch(dataUrl);
@@ -101,6 +106,12 @@ export default function ImageGenerator({
   const [qualityTarget, setQualityTarget] = useState<QualityTarget>("print-300");
   const [generationMode, setGenerationMode] = useState<"standard" | "print-ready">("standard");
   const [selectedPrintFormat, setSelectedPrintFormat] = useState<PrintFormat>(PRINT_FORMATS[0]);
+  // Phase 1: generator provider preference (auto/sdxl/gemini), persisted in sessionStorage
+  const [generatorPref, setGeneratorPref] = useState<GeneratorPreference>(() => loadGeneratorPreference());
+  const [lastProviderUsed, setLastProviderUsed] = useState<string | null>(null);
+  const [lastModelUsed, setLastModelUsed] = useState<string | null>(null);
+  const [lastFallbackUsed, setLastFallbackUsed] = useState<boolean>(false);
+  const [lastStrategyUsed, setLastStrategyUsed] = useState<"auto" | "manual" | null>(null);
   const { toast } = useToast();
 
   // Shared upscale hook
