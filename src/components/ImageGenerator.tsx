@@ -185,6 +185,7 @@ export default function ImageGenerator({
         aspectRatio: effectiveAspectRatio,
         backgroundStyle,
         printMode: true,
+        generatorPreference: generatorPref,
       };
       if (isInlineEditing && imageUrl) {
         body.sourceImageUrl = imageUrl;
@@ -200,6 +201,28 @@ export default function ImageGenerator({
       setBaseImageUrl(baseUrl);
       setImageUrl(baseUrl);
 
+      // Capture provider metadata so we can store it on save and display it.
+      const usedProvider: string | null = data?.provider || null;
+      const usedModel: string | null = data?.model || null;
+      const usedFallback: boolean = !!data?.fallbackUsed;
+      const usedStrategy: "auto" | "manual" | null = data?.strategy || null;
+      setLastProviderUsed(usedProvider);
+      setLastModelUsed(usedModel);
+      setLastFallbackUsed(usedFallback);
+      setLastStrategyUsed(usedStrategy);
+
+      if (usedProvider) {
+        console.log(
+          `[ImageGenerator] generated with provider=${usedProvider} model=${usedModel} strategy=${usedStrategy} fallback=${usedFallback}`,
+        );
+        if (usedFallback) {
+          toast({
+            title: "Used fallback generator",
+            description: `Primary generator failed — image was created with ${usedProvider}.`,
+          });
+        }
+      }
+
       if (isInlineEditing) {
         setPrompt(activePrompt.trim());
         setIsInlineEditing(false);
@@ -213,9 +236,11 @@ export default function ImageGenerator({
         runUpscale(upscaleMode, savedGalleryIdRef.current);
       }
     } catch (err: any) {
+      const desc = err?.message || "Something went wrong";
+      // If user manually picked a provider that failed, surface the explicit message
       toast({
         title: "Generation failed",
-        description: err.message || "Something went wrong",
+        description: desc,
         variant: "destructive",
       });
       setLoading(false);
