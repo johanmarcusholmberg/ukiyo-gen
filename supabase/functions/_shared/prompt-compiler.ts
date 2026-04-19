@@ -416,6 +416,8 @@ export const STYLE_RULES: Record<string, StyleRules> = {
 
 // ── Prompt compiler ──
 
+import { getSdxlParts, type ResolvedProviderId } from "./prompt-profiles.ts";
+
 export interface CompileOptions {
   aspectRatio?: string;
   /** Artwork background — used inside the generated image */
@@ -424,6 +426,19 @@ export interface CompileOptions {
   variationIndex?: number;
   /** When true, injects print optimization rules */
   printMode?: boolean;
+  /** Provider the prompt is being compiled for. Default = "gemini" (legacy) */
+  provider?: ResolvedProviderId;
+}
+
+export interface CompiledPrompt {
+  /** Positive prompt sent to the model. */
+  prompt: string;
+  /** Negative prompt — only meaningful for SDXL. */
+  negativePrompt?: string;
+  /** Provider this was compiled for. */
+  provider: ResolvedProviderId;
+  /** Style category resolved (debug only). */
+  category?: string;
 }
 
 /**
