@@ -68,6 +68,34 @@ export default function ProviderDebug() {
   });
   const [loadingQuick, setLoadingQuick] = useState(true);
 
+  // Prompt comparison state
+  const [promptStyle, setPromptStyle] = useState<string>("popart");
+  const [promptSubject, setPromptSubject] = useState<string>(
+    "A lone fisherman in a small boat at sunset",
+  );
+  const [promptResult, setPromptResult] = useState<PromptDebugResult | null>(null);
+  const [comparingPrompt, setComparingPrompt] = useState(false);
+
+  const comparePrompts = async () => {
+    setComparingPrompt(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("prompt-debug", {
+        method: "POST",
+        body: { style: promptStyle, prompt: promptSubject },
+      });
+      if (error) throw error;
+      setPromptResult(data as PromptDebugResult);
+    } catch (e: any) {
+      toast({
+        title: "Prompt compare failed",
+        description: e.message || String(e),
+        variant: "destructive",
+      });
+    } finally {
+      setComparingPrompt(false);
+    }
+  };
+
   const fetchQuick = async () => {
     setLoadingQuick(true);
     try {
