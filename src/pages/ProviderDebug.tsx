@@ -1,12 +1,49 @@
 import { useEffect, useState } from "react";
-import { Loader2, Play, CheckCircle2, XCircle, KeyRound } from "lucide-react";
+import { Loader2, Play, CheckCircle2, XCircle, KeyRound, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import StyleNav from "@/components/StyleNav";
 import { GENERATOR_PROVIDERS, type ResolvedProviderId } from "@/lib/generators";
 import { cn } from "@/lib/utils";
+
+interface PromptDebugResult {
+  style: string;
+  subject: string;
+  category: string;
+  gemini: { prompt: string; length: number };
+  sdxl: {
+    prompt: string;
+    negativePrompt?: string;
+    length: number;
+    negativeLength: number;
+    category: string;
+  };
+}
+
+const DEBUG_STYLE_KEYS = [
+  "popart",
+  "popart-freestyle",
+  "minimalism",
+  "minimalism-freestyle",
+  "lineart",
+  "lineart-minimal",
+  "screenprint",
+  "risograph",
+  "brutalistposter",
+  "retrocomic",
+  "pulpmagazine",
+  "tattooflash",
+  "japanese",
+  "freestyle",
+  "graffiti",
+  "botanical",
+  "urbannoir",
+  "xeroxzine",
+];
 
 interface HealthRow {
   providerId: ResolvedProviderId;
