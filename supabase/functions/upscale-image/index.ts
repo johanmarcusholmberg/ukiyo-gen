@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { Image } from "https://deno.land/x/imagescript@1.2.17/mod.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -638,14 +639,9 @@ function clarityPredictionBody(image: string, scaleFactor: number) {
   };
 }
 
-let _adminClient: any = null;
+let _adminClient: ReturnType<typeof createClient> | null = null;
 function createSupabaseAdmin() {
   if (_adminClient) return _adminClient;
-  // Lazy-import via dynamic import expression so the sync path doesn't pay the cost.
-  // deno-lint-ignore no-explicit-any
-  const { createClient } = (globalThis as any).__supabase_js__ ||
-    // Fallback to inline import if not preloaded
-    require("https://esm.sh/@supabase/supabase-js@2.45.0");
   _adminClient = createClient(
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
