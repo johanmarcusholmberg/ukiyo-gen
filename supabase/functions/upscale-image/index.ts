@@ -383,6 +383,16 @@ serve(async (req) => {
     let appliedScale = 4;
     let provider = "replicate/real-esrgan";
     let outputUrl: string | null = null;
+    // Print+ telemetry
+    let supirAttempted = false;
+    let supirSucceeded = false;
+    let esrganIntermediateUrl: string | null = null;
+
+    // Forward-compat: callers may pass explicit SUPIR flags. By default
+    // SUPIR only runs when mode === "print_plus".
+    const explicitUseSupir: boolean | undefined = body.use_supir;
+    const supirStrength: "low" | "medium" =
+      body.supir_strength === "low" ? "low" : "medium";
 
     if (mode === "realesrgan_4x") {
       appliedScale = 4;
@@ -392,6 +402,29 @@ serve(async (req) => {
       appliedScale = 4;
       provider = "replicate/clarity-upscaler";
       outputUrl = await runClarityUpscaler(imageUrl, 4, REPLICATE_API_TOKEN);
+    } else if (mode === "print_plus") {
+      // Stage 1: Real-ESRGAN 4× (always runs — never replaced by SUPIR).
+      appliedScale = 4;
+      provider = "replicate/real-esrgan+supir";
+      console.log("[print_plus] stage 1: Real-ESRGAN 4×…");
+      const esrganUrl = await runRealESRGAN(imageUrl, 4, REPLICATE_API_TOKEN);
+      esrganIntermediateUrl = esrganUrl;
+      outputUrl = esrganUrl;
+
+      // Stage 2: SUPIR refine (optional final step). Only runs if ESRGAN
+      // succeeded. Failure is non-fatal — we keep the ESRGAN output.
+      if (esrganUrl) {
+        supirAttempted = true;
+        console.log("[print_plus] stage 2: SUPIR refine…");
+        const refined = await runSupirRefine(esrganUrl, REPLICATE_API_TOKEN, supirStrength);
+        if (refined) {
+          supirSucceeded = true;
+          outputUrl = refined;
+          console.log("[print_plus] SUPIR refine succeeded");
+        } else {
+          console.warn("[print_plus] SUPIR refine failed — keeping ESRGAN result");
+        }
+      }
     } else if (mode === "tile_8x") {
       provider = "replicate/clarity-upscaler";
 
@@ -450,6 +483,16 @@ serve(async (req) => {
           outputUrl = await runClarityUpscaler(imageUrl, 4, REPLICATE_API_TOKEN);
         }
       }
+
+      // Forward-compat: also allow explicit use_supir on tile_8x.
+      if (explicitUseSupir && outputUrl) {
+        supirAttempted = true;
+        const refined = await runSupirRefine(outputUrl, REPLICATE_API_TOKEN, supirStrength);
+        if (refined) {
+          supirSucceeded = true;
+          outputUrl = refined;
+        }
+      }
     } else {
       return new Response(
         JSON.stringify({ error: `Unknown upscale mode: ${mode}` }),
@@ -478,6 +521,12 @@ serve(async (req) => {
           provider,
           downshifted,
           preDownscaled,
+          supirAttempted,
+          supirSucceeded,
+          // Surface the ESRGAN intermediate so callers can persist it as
+          // the base/master if they want. Never null when print_plus ran ESRGAN OK.
+          esrganIntermediateUrl,
+          refineFailed: supirAttempted && !supirSucceeded,
         },
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
