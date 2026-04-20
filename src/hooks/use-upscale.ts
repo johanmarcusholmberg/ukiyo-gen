@@ -70,9 +70,11 @@ export function useUpscale() {
       // it to Clarity at 8×). For other modes the stage is skipped.
       const stages: UpscaleStage[] = mode === "tile_8x"
         ? ["preparing", "optimizing", "cleanup", "tiling", "upscaling", "stitching"]
-        : UPSCALE_MODES[mode].tiled
-          ? ["preparing", "cleanup", "tiling", "upscaling", "stitching"]
-          : ["preparing", "cleanup", "upscaling"];
+        : mode === "print_plus"
+          ? ["preparing", "cleanup", "upscaling", "refining"]
+          : UPSCALE_MODES[mode].tiled
+            ? ["preparing", "cleanup", "tiling", "upscaling", "stitching"]
+            : ["preparing", "cleanup", "upscaling"];
       let stageIdx = 0;
       stageTimer.current = setInterval(() => {
         stageIdx = Math.min(stageIdx + 1, stages.length - 1);
@@ -117,7 +119,15 @@ export function useUpscale() {
           }
         }
 
-        setStage(result.downshifted ? "downshifted" : "done");
+        // Surface SUPIR partial-failure as a non-fatal end state so the UI
+        // can display "kept ESRGAN result" instead of a generic "done".
+        if (data.pipeline?.refineFailed) {
+          setStage("refine_failed");
+        } else if (result.downshifted) {
+          setStage("downshifted");
+        } else {
+          setStage("done");
+        }
         return result;
       } catch (err) {
         if (stageTimer.current) {
@@ -132,7 +142,7 @@ export function useUpscale() {
     [],
   );
 
-  const isRunning = ["preparing", "optimizing", "cleanup", "tiling", "upscaling", "stitching", "saving"].includes(stage);
+  const isRunning = ["preparing", "optimizing", "cleanup", "tiling", "upscaling", "stitching", "refining", "saving"].includes(stage);
   const stageLabel = UPSCALE_STAGE_LABELS[stage];
   const progress = UPSCALE_STAGE_PROGRESS[stage];
 
