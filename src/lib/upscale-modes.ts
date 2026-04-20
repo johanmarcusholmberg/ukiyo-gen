@@ -8,7 +8,7 @@
  *   - upscale-image edge function (mode dispatcher)
  */
 
-export type UpscaleMode = "none" | "realesrgan_4x" | "tile_4x" | "tile_8x";
+export type UpscaleMode = "none" | "realesrgan_4x" | "tile_4x" | "tile_8x" | "print_plus";
 
 export type UpscaleCategory = "off" | "fast" | "print";
 export type UpscaleCostTier = "free" | "low" | "medium" | "high";
@@ -123,6 +123,25 @@ export const UPSCALE_MODES: Record<UpscaleMode, UpscaleModeConfig> = {
     requiresOriginalAsset: true,
     enabled: true,
   },
+  print_plus: {
+    id: "print_plus",
+    label: "Print+ (ESRGAN → SUPIR)",
+    shortLabel: "Print+",
+    description: "Real-ESRGAN 4× upscale, then SUPIR detail refinement. Best fidelity for print.",
+    runs: true,
+    scaleFactor: 4,
+    tiled: false,
+    provider: "replicate/real-esrgan+supir",
+    category: "print",
+    estimatedTime: "~2–4 min",
+    estimatedCost: "high",
+    intendedUse: "Best fidelity for fine-art prints",
+    isAutomaticCapable: true,
+    isManualCapable: true,
+    isGalleryCapable: true,
+    requiresOriginalAsset: true,
+    enabled: true,
+  },
 };
 
 /** Filter options by the surface they appear in (auto / manual / gallery). */
@@ -150,6 +169,7 @@ export const UPSCALE_MODE_OPTIONS: UpscaleModeConfig[] = [
   UPSCALE_MODES.realesrgan_4x,
   UPSCALE_MODES.tile_4x,
   UPSCALE_MODES.tile_8x,
+  UPSCALE_MODES.print_plus,
 ];
 
 export const DEFAULT_UPSCALE_MODE: UpscaleMode = "none";
@@ -169,10 +189,12 @@ export type UpscaleStage =
   | "tiling"
   | "upscaling"
   | "stitching"
+  | "refining"
   | "saving"
   | "done"
   | "failed"
-  | "downshifted";
+  | "downshifted"
+  | "refine_failed";
 
 export const UPSCALE_STAGE_LABELS: Record<UpscaleStage, string> = {
   idle: "",
@@ -182,23 +204,27 @@ export const UPSCALE_STAGE_LABELS: Record<UpscaleStage, string> = {
   tiling: "Preparing tiles…",
   upscaling: "Upscaling…",
   stitching: "Stitching final image…",
+  refining: "Enhancing for print quality (SUPIR)…",
   saving: "Saving image…",
   done: "Upscale complete",
   failed: "Upscale failed",
   downshifted: "Downshifted to 4× (8× too large)",
+  refine_failed: "SUPIR refine failed — kept ESRGAN result",
 };
 
 /** Approximate progress percentage per stage, for the progress bar. */
 export const UPSCALE_STAGE_PROGRESS: Record<UpscaleStage, number> = {
   idle: 0,
-  preparing: 10,
-  optimizing: 20,
-  cleanup: 30,
-  tiling: 45,
-  upscaling: 65,
-  stitching: 85,
+  preparing: 8,
+  optimizing: 18,
+  cleanup: 28,
+  tiling: 40,
+  upscaling: 55,
+  stitching: 75,
+  refining: 88,
   saving: 95,
   done: 100,
   failed: 0,
   downshifted: 0,
+  refine_failed: 100,
 };
