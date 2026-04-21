@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowUpCircle, Check, Sparkles, Loader2 } from "lucide-react";
+import { ArrowUpCircle, Check, Sparkles, Loader2, Star, Printer } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import {
@@ -12,6 +12,7 @@ import {
   type UpscaleSurface,
   type UpscaleJobStatus,
 } from "@/lib/upscale-modes";
+import type { UpscaleRecipe } from "@/lib/upscale-recipes";
 import { Progress } from "@/components/ui/progress";
 
 interface UpscaleBadgeProps {
@@ -21,7 +22,7 @@ interface UpscaleBadgeProps {
   /** Which surface this badge lives in — filters which modes are offered. */
   surface: UpscaleSurface;
   /** Optional: trigger an immediate run of the picked mode (manual / gallery). */
-  onRun?: (m: UpscaleMode) => void;
+  onRun?: (m: UpscaleMode, recipe?: UpscaleRecipe | null) => void;
   /** Live status from useUpscale. */
   isRunning?: boolean;
   stageLabel?: string;
@@ -34,6 +35,8 @@ interface UpscaleBadgeProps {
   compact?: boolean;
   /** Disable interaction (e.g. while generation is happening). */
   disabled?: boolean;
+  /** Recommended recipe for this image (style + provider aware). */
+  recommendedRecipe?: UpscaleRecipe | null;
 }
 
 /**
@@ -55,11 +58,13 @@ export default function UpscaleBadge({
   appliedMode,
   compact,
   disabled,
+  recommendedRecipe,
 }: UpscaleBadgeProps) {
   const [open, setOpen] = useState(false);
   const options = getUpscaleOptionsForSurface(surface);
   const current = UPSCALE_MODES[value];
   const liveLabel = jobStatus ? UPSCALE_JOB_STATUS_LABEL[jobStatus] : stageLabel;
+  const recommendedMode = recommendedRecipe?.recommendedMode;
 
   const triggerLabel = isRunning
     ? liveLabel || "Upscaling…"
@@ -67,15 +72,20 @@ export default function UpscaleBadge({
     ? `Upscale: ${current.shortLabel}`
     : current.shortLabel;
 
-  const handlePick = (mode: UpscaleMode) => {
+  const handlePick = (mode: UpscaleMode, viaRecipe?: UpscaleRecipe | null) => {
     onChange(mode);
     if (onRun && mode !== "none") {
-      onRun(mode);
+      onRun(mode, viaRecipe ?? null);
       setOpen(false);
     } else if (surface === "automatic") {
       // Just a preference change — close the popover
       setOpen(false);
     }
+  };
+
+  const handleUseRecommended = () => {
+    if (!recommendedRecipe) return;
+    handlePick(recommendedRecipe.recommendedMode, recommendedRecipe);
   };
 
   return (
