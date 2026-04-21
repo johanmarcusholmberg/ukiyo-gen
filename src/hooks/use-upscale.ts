@@ -10,6 +10,12 @@ import {
   type UpscaleStage,
   type UpscaleJobStatus,
 } from "@/lib/upscale-modes";
+import {
+  resolveUpscaleRecipe,
+  generatorFamilyFromProvider,
+  type UpscaleRecipe,
+  type ResolveRecipeInput,
+} from "@/lib/upscale-recipes";
 
 // Backwards-compatible re-exports (older callers expect these symbols)
 export type UpscaleStatus = UpscaleStage;
@@ -33,6 +39,8 @@ interface UpscaleOptions {
   galleryImageId?: string;
   /** Mode to run. Defaults to realesrgan_4x for backward compatibility. */
   mode?: UpscaleMode;
+  /** Optional recipe metadata — recorded on the upscale_jobs row. */
+  recipe?: Pick<UpscaleRecipe, "id" | "label" | "reason"> | null;
 }
 
 /**
@@ -115,7 +123,12 @@ export function useUpscale() {
 
       try {
         const { data, error } = await supabase.functions.invoke("upscale-image", {
-          body: { imageUrl: sourceUrl, mode, galleryImageId: opts?.galleryImageId },
+          body: {
+            imageUrl: sourceUrl,
+            mode,
+            galleryImageId: opts?.galleryImageId,
+            recipe: opts?.recipe ?? undefined,
+          },
         });
 
         if (error) throw error;
@@ -241,6 +254,35 @@ export function useUpscale() {
   const stageLabel = UPSCALE_STAGE_LABELS[stage];
   const progress = UPSCALE_STAGE_PROGRESS[stage];
 
+  /**
+   * Resolve a recipe recommendation from style + provider metadata.
+   * Pure helper — does NOT trigger an upscale.
+   */
+  const recommendRecipe = useCallback(
+    (input: ResolveRecipeInput): UpscaleRecipe => resolveUpscaleRecipe(input),
+    [],
+  );
+
+  /**
+   * One-shot helper: resolve the recommended recipe for an image and run it.
+   * Used by the "Use recommended" button in UpscaleBadge.
+   */
+  const runRecommendedUpscale = useCallback(
+    async (
+      sourceUrl: string,
+      input: ResolveRecipeInput,
+      opts?: Omit<UpscaleOptions, "mode" | "recipe">,
+    ): Promise<UpscaleResult | null> => {
+      const recipe = resolveUpscaleRecipe(input);
+      return upscale(sourceUrl, {
+        ...opts,
+        mode: recipe.recommendedMode,
+        recipe: { id: recipe.id, label: recipe.label, reason: recipe.reason },
+      });
+    },
+    [upscale],
+  );
+
   return {
     stage,
     /** Backwards-compat alias for older callers that read `status` */
@@ -253,6 +295,10 @@ export function useUpscale() {
     jobId,
     jobStatus,
     upscale,
+    runRecommendedUpscale,
+    recommendRecipe,
+    /** Re-exported for convenience */
+    generatorFamilyFromProvider,
     reset,
     setStage,
   };

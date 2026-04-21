@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
 import { usePersistedGeneration } from "@/hooks/use-persisted-generation";
 import { Loader2, Download, Sparkles, Save, Replace, X, Trash2, Pencil, Printer, FileImage, ArrowUpCircle } from "lucide-react";
 import {
@@ -38,6 +38,11 @@ import {
   type GeneratorPreference,
   loadGeneratorPreference,
 } from "@/lib/generators";
+import {
+  resolveUpscaleRecipe,
+  generatorFamilyFromProvider,
+  type UpscaleRecipe,
+} from "@/lib/upscale-recipes";
 
 const downloadImage = async (dataUrl: string, filename: string) => {
   const res = await fetch(dataUrl);
@@ -132,20 +137,51 @@ export default function ImageGenerator({
   const effectiveAspectRatio = generationMode === "print-ready" ? selectedPrintFormat.aspectRatio : printSize.ratio;
   const upscaleConfig = UPSCALE_MODES[upscaleMode];
 
+  // Style + provider-aware recipe recommendation. Recomputes whenever the
+  // style, provider, or print intent changes.
+  const recommendedRecipe = useMemo(
+    () =>
+      resolveUpscaleRecipe({
+        styleKey: styleConfig.styleKey,
+        mode,
+        generatorFamily: generatorFamilyFromProvider(lastProviderUsed),
+        printIntent: generationMode === "print-ready",
+      }),
+    [styleConfig.styleKey, mode, lastProviderUsed, generationMode],
+  );
+
   /**
    * Trigger upscale (shared for auto + manual + re-upscale).
    * ALWAYS runs from the original/base image, never from an already-upscaled
    * derivative — that's how we preserve quality across re-upscales.
    */
-  const runUpscale = async (mode: UpscaleMode, galleryId?: string | null) => {
+  const runUpscale = async (
+    mode: UpscaleMode,
+    galleryId?: string | null,
+    recipe?: UpscaleRecipe | null,
+  ) => {
     if (mode === "none") return;
     const sourceUrl = baseImageUrl || imageUrl;
     if (!sourceUrl) return;
 
     const runId = ++upscaleRunId.current;
+    // If the picked mode matches the recommended recipe and no recipe was
+    // passed explicitly, attach the recommendation so it's recorded on the job.
+    const effectiveRecipe: UpscaleRecipe | null =
+      recipe ??
+      (recommendedRecipe && mode === recommendedRecipe.recommendedMode
+        ? recommendedRecipe
+        : null);
     const result = await upscale(sourceUrl, {
       mode,
       galleryImageId: galleryId || undefined,
+      recipe: effectiveRecipe
+        ? {
+            id: effectiveRecipe.id,
+            label: effectiveRecipe.label,
+            reason: effectiveRecipe.reason,
+          }
+        : undefined,
     });
     if (upscaleRunId.current !== runId) return;
     if (result) {
@@ -489,6 +525,7 @@ export default function ImageGenerator({
             jobStatus={upscaleJobStatus}
             appliedMode={hasEnhanced ? upscaleMode : null}
             disabled={loading}
+            recommendedRecipe={recommendedRecipe}
           />
           <span className="font-display text-[10px] text-muted-foreground">
             {upscaleConfig.intendedUse}
@@ -717,12 +754,15 @@ export default function ImageGenerator({
                   value={upscaleMode}
                   onChange={setUpscaleMode}
                   surface="manual"
-                  onRun={(m) => runUpscale(m, savedGalleryIdRef.current)}
+                  onRun={(m, recipe) =>
+                    runUpscale(m, savedGalleryIdRef.current, recipe ?? null)
+                  }
                   isRunning={isUpscaling}
                   stageLabel={upscaleStageLabel}
                   progress={upscaleProgress}
                   jobStatus={upscaleJobStatus}
                   appliedMode={hasEnhanced ? upscaleMode : null}
+                  recommendedRecipe={recommendedRecipe}
                   compact
                 />
               )}

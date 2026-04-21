@@ -354,6 +354,9 @@ export type Database = {
           mode: string
           output_url: string | null
           pipeline: Json | null
+          recipe_id: string | null
+          recipe_label: string | null
+          recipe_reason: string | null
           replicate_prediction_id: string | null
           source_url: string
           started_at: string | null
@@ -369,6 +372,9 @@ export type Database = {
           mode: string
           output_url?: string | null
           pipeline?: Json | null
+          recipe_id?: string | null
+          recipe_label?: string | null
+          recipe_reason?: string | null
           replicate_prediction_id?: string | null
           source_url: string
           started_at?: string | null
@@ -384,6 +390,9 @@ export type Database = {
           mode?: string
           output_url?: string | null
           pipeline?: Json | null
+          recipe_id?: string | null
+          recipe_label?: string | null
+          recipe_reason?: string | null
           replicate_prediction_id?: string | null
           source_url?: string
           started_at?: string | null
