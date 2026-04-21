@@ -10,6 +10,12 @@ import {
   type UpscaleStage,
   type UpscaleJobStatus,
 } from "@/lib/upscale-modes";
+import {
+  resolveUpscaleRecipe,
+  generatorFamilyFromProvider,
+  type UpscaleRecipe,
+  type ResolveRecipeInput,
+} from "@/lib/upscale-recipes";
 
 // Backwards-compatible re-exports (older callers expect these symbols)
 export type UpscaleStatus = UpscaleStage;
@@ -33,6 +39,8 @@ interface UpscaleOptions {
   galleryImageId?: string;
   /** Mode to run. Defaults to realesrgan_4x for backward compatibility. */
   mode?: UpscaleMode;
+  /** Optional recipe metadata — recorded on the upscale_jobs row. */
+  recipe?: Pick<UpscaleRecipe, "id" | "label" | "reason"> | null;
 }
 
 /**
