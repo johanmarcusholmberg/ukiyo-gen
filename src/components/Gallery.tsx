@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -33,6 +34,11 @@ import { Link } from "react-router-dom";
 import JSZip from "jszip";
 import { getPrintFormat, assessExportReadiness, DEFAULT_PRINT_FORMAT_ID, formatExportDescription } from "@/lib/print-formats";
 import { preparePrintExport, downloadPrintExport } from "@/lib/print-export";
+import {
+  getExportSourceAssetForImage,
+  getReprocessSourceAssetForImage,
+  getPrintReadiness,
+} from "@/lib/image-assets";
 import PrintQualityIndicator from "@/components/PrintQualityIndicator";
 import { useUpscale } from "@/hooks/use-upscale";
 import { UPSCALE_MODES, type UpscaleMode } from "@/lib/upscale-modes";
@@ -253,6 +259,27 @@ function LightboxContent({
                 {exportReadiness.description}
               </p>
             )}
+            {/* Master-aware print readiness — uses the canonical master asset
+                dimensions, not preview/DOM size. */}
+            {(() => {
+              const r = getPrintReadiness(img, img.print_format_id);
+              if (r.level === "unknown") return null;
+              const cls =
+                r.level === "ready-300" ? "text-primary" :
+                r.level === "ready-150" ? "text-foreground" :
+                r.level === "soft" ? "text-orange-500" :
+                "text-destructive";
+              return (
+                <p className={cn("font-display text-[11px] font-medium", cls)}>
+                  {r.summary}
+                  {r.recommendation && r.level !== "ready-300" && (
+                    <span className="block text-muted-foreground italic font-normal">
+                      {r.recommendation}
+                    </span>
+                  )}
+                </p>
+              );
+            })()}
             {img.upscale_applied && (
               <p className="font-display text-[11px] text-muted-foreground italic">Upscale applied</p>
             )}
@@ -643,11 +670,9 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
   ) => {
     if (mode === "none") return;
     // ALWAYS reprocess from the original/base image — never from an
-    // already-upscaled derivative. Falls back through original → base → master
-    // for backwards compatibility with older gallery items.
-    const basePath = (img as any).original_storage_path || img.storage_path;
-    const baseUrl = supabase.storage.from("generated-images").getPublicUrl(basePath).data.publicUrl;
-    const sourceUrl = baseUrl || img.publicUrl || img.masterUrl;
+    // already-upscaled derivative. Centralized in image-assets.ts so the
+    // rule is consistent everywhere.
+    const sourceUrl = getReprocessSourceAssetForImage(img) || img.publicUrl || img.masterUrl;
     const result = await galleryUpscale(sourceUrl, {
       galleryImageId: img.id,
       mode,
@@ -683,14 +708,17 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
   useEffect(() => { resetGalleryUpscale(); }, [selected?.id]);
 
   const handlePrintExport = async (img: GalleryImage) => {
-    // Source selection: prefer the best available asset.
-    //   1. enhanced/tiled (masterUrl already points here when present)
-    //   2. base/original
-    //   3. preview
-    const exportSourceUrl = img.enhancedUrl || img.masterUrl || img.publicUrl;
+    // Source selection is centralized — exports MUST start from master.
+    const exportSourceUrl = getExportSourceAssetForImage(img);
     if (!exportSourceUrl) {
       toast.error("Source image is missing — cannot create print export");
       return;
+    }
+
+    // Surface print-readiness up-front so the user knows what they're getting.
+    const readiness = getPrintReadiness(img, img.print_format_id);
+    if (readiness.level === "too-small") {
+      toast.warning(`${readiness.summary} — ${readiness.recommendation ?? "consider enhancing first"}`);
     }
 
     const formatId = img.print_format_id || DEFAULT_PRINT_FORMAT_ID;

@@ -374,8 +374,13 @@ export default function ImageGenerator({
     if (!imageUrl || exporting) return;
     setExporting(true);
     try {
+      // Master selection during generation: enhanced beats base beats raw imageUrl.
+      // This mirrors the centralized rules in src/lib/image-assets.ts but
+      // operates on local state since nothing has been persisted yet.
+      const exportSource = enhancedImageUrl || baseImageUrl || imageUrl;
+
       const result = await preparePrintExport({
-        imageUrl,
+        imageUrl: exportSource,
         printFormatId: selectedPrintFormat.id,
         padColor: paperColor === "cream" ? "#f5f0e8" : "#ffffff",
       });
