@@ -113,6 +113,9 @@ export default function UpscaleBadge({
           {appliedMode && appliedMode !== "none" && !isRunning && (
             <Sparkles className="h-3 w-3 text-primary" />
           )}
+          {recommendedRecipe && !isRunning && appliedMode !== recommendedMode && (
+            <Star className="h-3 w-3 text-primary fill-primary" aria-label="Recommendation available" />
+          )}
         </button>
       </PopoverTrigger>
       <PopoverContent align="start" className="w-80 p-3 space-y-3">
@@ -146,24 +149,68 @@ export default function UpscaleBadge({
           </div>
         )}
 
+        {recommendedRecipe && (
+          <div
+            className={cn(
+              "rounded-sm border px-2 py-1.5 space-y-1.5",
+              recommendedRecipe.preferPrint
+                ? "border-primary/50 bg-primary/10"
+                : "border-primary/30 bg-primary/5",
+            )}
+          >
+            <div className="flex items-center gap-1.5">
+              <Star className="h-3 w-3 text-primary fill-primary" />
+              <span className="font-display text-[11px] font-bold text-foreground">
+                Recommended: {recommendedRecipe.label}
+              </span>
+              {recommendedRecipe.preferPrint && (
+                <Printer className="h-3 w-3 text-primary" />
+              )}
+            </div>
+            <p className="font-display text-[10px] text-muted-foreground leading-snug">
+              {recommendedRecipe.reason}
+            </p>
+            {appliedMode !== recommendedRecipe.recommendedMode && (
+              <button
+                type="button"
+                onClick={handleUseRecommended}
+                disabled={disabled || isRunning}
+                className="w-full px-2 py-1 rounded-sm bg-primary text-primary-foreground text-[11px] font-display font-bold hover:bg-primary/90 disabled:opacity-50 transition-colors"
+              >
+                Use recommended ({UPSCALE_MODES[recommendedRecipe.recommendedMode].shortLabel})
+              </button>
+            )}
+          </div>
+        )}
+
         <div className="space-y-1">
           {options.map((opt) => {
             const isActive = value === opt.id;
             const isApplied = appliedMode === opt.id;
+            const isRecommended = recommendedMode === opt.id;
             return (
               <button
                 key={opt.id}
-                onClick={() => handlePick(opt.id)}
+                onClick={() => handlePick(opt.id, isRecommended ? recommendedRecipe : null)}
                 disabled={disabled || isRunning}
                 className={cn(
                   "w-full text-left px-2 py-1.5 rounded-sm border font-display transition-colors disabled:opacity-50",
                   isActive
                     ? "bg-primary/10 border-primary/40 text-foreground"
-                    : "bg-card border-border hover:bg-muted text-foreground",
+                    : isRecommended
+                      ? "bg-card border-primary/30 hover:bg-muted text-foreground"
+                      : "bg-card border-border hover:bg-muted text-foreground",
                 )}
               >
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs font-bold">{opt.label}</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-bold">{opt.label}</span>
+                    {isRecommended && (
+                      <span className="inline-flex items-center gap-0.5 px-1 rounded-sm bg-primary/15 text-primary text-[9px] uppercase tracking-wider">
+                        <Star className="h-2.5 w-2.5 fill-primary" /> Rec
+                      </span>
+                    )}
+                  </div>
                   <div className="flex items-center gap-1">
                     {isApplied && (
                       <Sparkles className="h-3 w-3 text-primary" />
