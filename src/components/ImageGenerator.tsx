@@ -154,15 +154,31 @@ export default function ImageGenerator({
    * ALWAYS runs from the original/base image, never from an already-upscaled
    * derivative — that's how we preserve quality across re-upscales.
    */
-  const runUpscale = async (mode: UpscaleMode, galleryId?: string | null) => {
+  const runUpscale = async (
+    mode: UpscaleMode,
+    galleryId?: string | null,
+    recipe?: { id: string; label: string; reason: string } | null,
+  ) => {
     if (mode === "none") return;
     const sourceUrl = baseImageUrl || imageUrl;
     if (!sourceUrl) return;
 
     const runId = ++upscaleRunId.current;
+    // If the picked mode matches the recommended recipe and no recipe was
+    // passed explicitly, attach the recommendation so it's recorded on the job.
+    const effectiveRecipe =
+      recipe ??
+      (recommendedRecipe && mode === recommendedRecipe.recommendedMode
+        ? {
+            id: recommendedRecipe.id,
+            label: recommendedRecipe.label,
+            reason: recommendedRecipe.reason,
+          }
+        : null);
     const result = await upscale(sourceUrl, {
       mode,
       galleryImageId: galleryId || undefined,
+      recipe: effectiveRecipe ?? undefined,
     });
     if (upscaleRunId.current !== runId) return;
     if (result) {
