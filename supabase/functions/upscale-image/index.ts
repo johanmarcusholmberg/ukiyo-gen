@@ -348,11 +348,16 @@ serve(async (req) => {
     const body = await req.json();
     const imageUrl: string | undefined = body.imageUrl;
     const galleryImageId: string | undefined = body.galleryImageId;
+    const recipe: { id?: string; label?: string; reason?: string } | undefined = body.recipe;
 
     // Accept new mode-based API + legacy fields for backwards compatibility.
     let mode: UpscaleMode = body.mode ?? "realesrgan_4x";
     if (!mode && body.scaleFactor) {
       mode = body.scaleFactor >= 4 ? "realesrgan_4x" : "realesrgan_4x";
+    }
+
+    if (recipe?.id) {
+      console.log(`[upscale] recipe=${recipe.id} mode=${mode}`);
     }
 
     if (!imageUrl || typeof imageUrl !== "string") {
@@ -501,6 +506,9 @@ serve(async (req) => {
           mode,
           status: "queued",
           source_url: imageUrl,
+          recipe_id: recipe?.id ?? null,
+          recipe_label: recipe?.label ?? null,
+          recipe_reason: recipe?.reason ?? null,
           pipeline: {
             mode,
             scale: appliedScale,
@@ -509,6 +517,7 @@ serve(async (req) => {
             downshifted,
             preDownscaled,
             async: true,
+            recipeId: recipe?.id ?? undefined,
             ...(mode === "print_plus" ? { supirAttempted: false } : {}),
           },
         })
