@@ -41,6 +41,7 @@ import {
 import {
   resolveUpscaleRecipe,
   generatorFamilyFromProvider,
+  type UpscaleRecipe,
 } from "@/lib/upscale-recipes";
 
 const downloadImage = async (dataUrl: string, filename: string) => {
@@ -157,7 +158,7 @@ export default function ImageGenerator({
   const runUpscale = async (
     mode: UpscaleMode,
     galleryId?: string | null,
-    recipe?: { id: string; label: string; reason: string } | null,
+    recipe?: UpscaleRecipe | null,
   ) => {
     if (mode === "none") return;
     const sourceUrl = baseImageUrl || imageUrl;
@@ -166,19 +167,21 @@ export default function ImageGenerator({
     const runId = ++upscaleRunId.current;
     // If the picked mode matches the recommended recipe and no recipe was
     // passed explicitly, attach the recommendation so it's recorded on the job.
-    const effectiveRecipe =
+    const effectiveRecipe: UpscaleRecipe | null =
       recipe ??
       (recommendedRecipe && mode === recommendedRecipe.recommendedMode
-        ? {
-            id: recommendedRecipe.id,
-            label: recommendedRecipe.label,
-            reason: recommendedRecipe.reason,
-          }
+        ? recommendedRecipe
         : null);
     const result = await upscale(sourceUrl, {
       mode,
       galleryImageId: galleryId || undefined,
-      recipe: effectiveRecipe ?? undefined,
+      recipe: effectiveRecipe
+        ? {
+            id: effectiveRecipe.id,
+            label: effectiveRecipe.label,
+            reason: effectiveRecipe.reason,
+          }
+        : undefined,
     });
     if (upscaleRunId.current !== runId) return;
     if (result) {
