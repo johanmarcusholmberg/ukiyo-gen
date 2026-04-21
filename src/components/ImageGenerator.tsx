@@ -525,6 +525,7 @@ export default function ImageGenerator({
             jobStatus={upscaleJobStatus}
             appliedMode={hasEnhanced ? upscaleMode : null}
             disabled={loading}
+            recommendedRecipe={recommendedRecipe}
           />
           <span className="font-display text-[10px] text-muted-foreground">
             {upscaleConfig.intendedUse}
@@ -753,12 +754,15 @@ export default function ImageGenerator({
                   value={upscaleMode}
                   onChange={setUpscaleMode}
                   surface="manual"
-                  onRun={(m) => runUpscale(m, savedGalleryIdRef.current)}
+                  onRun={(m, recipe) =>
+                    runUpscale(m, savedGalleryIdRef.current, recipe ?? null)
+                  }
                   isRunning={isUpscaling}
                   stageLabel={upscaleStageLabel}
                   progress={upscaleProgress}
                   jobStatus={upscaleJobStatus}
                   appliedMode={hasEnhanced ? upscaleMode : null}
+                  recommendedRecipe={recommendedRecipe}
                   compact
                 />
               )}
