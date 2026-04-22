@@ -1,6 +1,6 @@
 import { useState, useRef, useMemo } from "react";
 import { usePersistedGeneration } from "@/hooks/use-persisted-generation";
-import { Loader2, Download, Sparkles, Save, Replace, X, Trash2, Pencil, Printer, FileImage, ArrowUpCircle } from "lucide-react";
+import { Loader2, Download, Sparkles, Save, Replace, X, Trash2, Pencil, Printer, FileImage, ArrowUpCircle, ThumbsUp, ThumbsDown, Layers } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -43,6 +43,10 @@ import {
   generatorFamilyFromProvider,
   type UpscaleRecipe,
 } from "@/lib/upscale-recipes";
+import RouteBadge from "@/components/RouteBadge";
+import ProviderComparison from "@/components/ProviderComparison";
+import { useImageFeedback } from "@/hooks/use-image-feedback";
+import type { NormalizedGenerationResponse } from "@/lib/generation-types";
 
 const downloadImage = async (dataUrl: string, filename: string) => {
   const res = await fetch(dataUrl);
@@ -117,6 +121,9 @@ export default function ImageGenerator({
   const [lastModelUsed, setLastModelUsed] = useState<string | null>(null);
   const [lastFallbackUsed, setLastFallbackUsed] = useState<boolean>(false);
   const [lastStrategyUsed, setLastStrategyUsed] = useState<"auto" | "manual" | null>(null);
+  const [lastExecutionRoute, setLastExecutionRoute] = useState<string | null>(null);
+  const [lastRoutingReason, setLastRoutingReason] = useState<string | null>(null);
+  const [compareOpen, setCompareOpen] = useState(false);
   const { toast } = useToast();
 
   // Shared upscale hook
