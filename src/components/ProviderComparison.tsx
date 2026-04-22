@@ -37,7 +37,7 @@ export interface ComparisonResultPick {
 interface ProviderComparisonProps {
   request: CompareRequest;
   /** Adapters to race against each other. */
-  adapters: Array<{ id: "lovable" | "gemini"; label: string }>;
+  adapters: Array<{ id: "lovable" | "gemini" | "replicate"; label: string }>;
   onPick: (pick: ComparisonResultPick) => void;
   onClose: () => void;
 }
@@ -69,16 +69,45 @@ export default function ProviderComparison({
     await Promise.all(
       adapters.map(async (a) => {
         try {
-          const { response } = await generateImage({
-            prompt: request.prompt,
-            styleKey: request.styleKey,
-            aspectRatio: request.aspectRatio,
-            backgroundStyle: request.backgroundStyle,
-            printMode: request.printMode,
-            providerPreference: a.id === "gemini" ? "gemini" : "sdxl",
-            referenceImageUrl: request.referenceImageUrl,
-            isEdit: request.isEdit,
-          });
+          // Map comparison adapter id → provider preference understood by the router.
+          //   - "replicate" → "sdxl" (router maps sdxl → direct Replicate first)
+          //   - "lovable"   → "sdxl" via Lovable. We pass "auto" + a hint so the
+          //                   router would prefer Lovable, but to keep the
+          //                   comparison fair we route SDXL through the Lovable
+          //                   adapter directly — that's what the dedicated
+          //                   `lovable` adapter does in the chain. To force it,
+          //                   we use the dedicated adapter via the router by
+          //                   asking for "auto" with isEdit set is not right
+          //                   here. Easiest: call the adapter directly.
+          let response;
+          if (a.id === "lovable") {
+            const { generateWithLovableAdapter } = await import(
+              "@/lib/generation-providers/lovable",
+            );
+            response = await generateWithLovableAdapter({
+              prompt: request.prompt,
+              styleKey: request.styleKey,
+              aspectRatio: request.aspectRatio,
+              backgroundStyle: request.backgroundStyle,
+              printMode: request.printMode,
+              providerPreference: "sdxl",
+              referenceImageUrl: request.referenceImageUrl,
+              isEdit: request.isEdit,
+            });
+          } else {
+            const pref = a.id === "gemini" ? "gemini" : "sdxl";
+            const out = await generateImage({
+              prompt: request.prompt,
+              styleKey: request.styleKey,
+              aspectRatio: request.aspectRatio,
+              backgroundStyle: request.backgroundStyle,
+              printMode: request.printMode,
+              providerPreference: pref,
+              referenceImageUrl: request.referenceImageUrl,
+              isEdit: request.isEdit,
+            });
+            response = out.response;
+          }
           setSlots((prev) => ({ ...prev, [a.id]: { loading: false, response } }));
         } catch (err: any) {
           const msg = err?.message || "Generation failed";
