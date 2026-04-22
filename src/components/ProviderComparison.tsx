@@ -69,16 +69,11 @@ export default function ProviderComparison({
     await Promise.all(
       adapters.map(async (a) => {
         try {
-          // Map comparison adapter id → provider preference understood by the router.
-          //   - "replicate" → "sdxl" (router maps sdxl → direct Replicate first)
-          //   - "lovable"   → "sdxl" via Lovable. We pass "auto" + a hint so the
-          //                   router would prefer Lovable, but to keep the
-          //                   comparison fair we route SDXL through the Lovable
-          //                   adapter directly — that's what the dedicated
-          //                   `lovable` adapter does in the chain. To force it,
-          //                   we use the dedicated adapter via the router by
-          //                   asking for "auto" with isEdit set is not right
-          //                   here. Easiest: call the adapter directly.
+          // Each comparison slot must hit ONE specific path so the user can
+          // judge per-provider quality. Map adapter id → the right call:
+          //   - "lovable"   → call Lovable adapter directly (the gateway path)
+          //   - "replicate" → router with pref "sdxl" (now → direct Replicate)
+          //   - "gemini"    → router with pref "gemini" (direct Gemini)
           let response;
           if (a.id === "lovable") {
             const { generateWithLovableAdapter } = await import(
