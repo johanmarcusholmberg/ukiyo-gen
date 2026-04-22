@@ -150,14 +150,35 @@ export type ExecutionRoute =
   | "lovable_gateway"
   | "lovable_gateway_sdxl"
   | "direct_gemini"
-  | "lovable_gateway_fallback";
+  | "direct_replicate"
+  | "lovable_gateway_fallback"
+  | "direct_gemini_fallback"
+  | "direct_replicate_fallback";
 
 export function executionRouteLabel(route?: string | null): string {
   switch (route) {
     case "lovable_gateway": return "Lovable gateway";
     case "lovable_gateway_sdxl": return "Lovable gateway (SDXL)";
     case "direct_gemini": return "Direct Gemini";
-    case "lovable_gateway_fallback": return "Lovable gateway · fallback";
+    case "direct_replicate": return "Direct Replicate";
+    case "lovable_gateway_fallback": return "Lovable · fallback";
+    case "direct_gemini_fallback": return "Direct Gemini · fallback";
+    case "direct_replicate_fallback": return "Direct Replicate · fallback";
     default: return "Unknown route";
   }
+}
+
+/**
+ * Visual route family for badge styling:
+ *   - "direct"   → 🟢 we hit the provider API straight (Replicate / Gemini)
+ *   - "lovable"  → 🟡 we went through the Lovable gateway
+ *   - "fallback" → 🔁 the primary route failed and we recovered via another
+ */
+export type RouteVisualKind = "direct" | "lovable" | "fallback";
+
+export function executionRouteKind(route?: string | null): RouteVisualKind {
+  if (!route) return "lovable";
+  if (route.endsWith("_fallback")) return "fallback";
+  if (route.startsWith("direct_")) return "direct";
+  return "lovable";
 }
