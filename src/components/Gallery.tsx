@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import {
   Download, Loader2, Trash2, Pencil, ChevronLeft, ChevronRight,
   Sun, FileText, Share2, CheckSquare, Square, Sparkles, Search,
-  FolderPlus, FolderMinus, Printer, ArrowUpCircle,
+  FolderPlus, FolderMinus, Printer, ArrowUpCircle, ShoppingBag,
 } from "lucide-react";
 import type { StyleConfig } from "@/lib/style-config";
 import { Button } from "@/components/ui/button";
@@ -45,6 +45,7 @@ import { UPSCALE_MODES, type UpscaleMode } from "@/lib/upscale-modes";
 import { resolveUpscaleRecipe, generatorFamilyFromProvider, type UpscaleRecipe } from "@/lib/upscale-recipes";
 import UpscaleBadge from "@/components/UpscaleBadge";
 import { Progress } from "@/components/ui/progress";
+import EtsyExportDialog from "@/components/EtsyExportDialog";
 
 interface GalleryImage {
   id: string;
