@@ -83,6 +83,9 @@ interface GalleryImage {
   enhancement_model?: string | null;
   upscale_factor?: number | null;
   generation_provider?: string | null;
+  generation_model?: string | null;
+  execution_route?: string | null;
+  fallback_used?: boolean | null;
 }
 
 export interface EditRequest {
