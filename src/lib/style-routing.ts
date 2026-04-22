@@ -17,7 +17,7 @@
  * Rules are explicit and easy to audit; no opaque AI-decides logic.
  */
 
-export type RouteFamily = "lovable_sdxl" | "direct_gemini";
+export type RouteFamily = "lovable_sdxl" | "direct_gemini" | "direct_replicate";
 
 export interface StyleRoutingDecision {
   /** Which adapter family Auto should try first. */
@@ -105,33 +105,35 @@ export function decideRoute(input: RoutingInput): StyleRoutingDecision {
     };
   }
 
+  // Texture-heavy / painterly styles benefit from SDXL's refiner. Send
+  // them straight to direct Replicate; the router falls back to Lovable.
   if (LOVABLE_SDXL_STYLES.has(styleKey)) {
     return {
-      primary: "lovable_sdxl",
-      reason: `style=${styleKey} → Lovable/SDXL (texture-heavy)`,
+      primary: "direct_replicate",
+      reason: `style=${styleKey} → direct Replicate (texture-heavy SDXL)`,
     };
   }
 
   if (printIntent) {
     // Print-ready output benefits from SDXL's refiner pass.
     return {
-      primary: "lovable_sdxl",
-      reason: `printIntent + style=${styleKey} → Lovable/SDXL (refiner)`,
+      primary: "direct_replicate",
+      reason: `printIntent + style=${styleKey} → direct Replicate (refiner)`,
     };
   }
 
   if (GEMINI_FIRST_STYLES.has(styleKey)) {
     return {
       primary: "direct_gemini",
-      reason: `style=${styleKey} → Gemini (cost-efficient, flat/poster/line)`,
+      reason: `style=${styleKey} → direct Gemini (cost-efficient, flat/poster/line)`,
     };
   }
 
-  // Unknown / new style — default to Gemini as cheapest option, fall back
-  // to Lovable on failure (handled in the router).
+  // Unknown / new style — default to direct Gemini as cheapest option.
+  // Router appends Replicate then Lovable as safety-net fallbacks.
   return {
     primary: "direct_gemini",
-    reason: `style=${styleKey} → Gemini (default cost-aware fallback)`,
+    reason: `style=${styleKey} → direct Gemini (default cost-aware fallback)`,
   };
 }
 
