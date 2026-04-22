@@ -47,6 +47,7 @@ import UpscaleBadge from "@/components/UpscaleBadge";
 import { Progress } from "@/components/ui/progress";
 import EtsyExportDialog from "@/components/EtsyExportDialog";
 import EtsyMockupDialog from "@/components/EtsyMockupDialog";
+import RouteBadge from "@/components/RouteBadge";
 
 interface GalleryImage {
   id: string;
@@ -230,6 +231,15 @@ function LightboxContent({
           )}
           {img.enhanced && (
             <Badge variant="outline" className="font-display text-xs text-primary border-primary/30">Enhanced</Badge>
+          )}
+          {(img.generation_provider || img.execution_route) && (
+            <RouteBadge
+              provider={img.generation_provider}
+              model={img.generation_model}
+              route={img.execution_route}
+              fallback={!!img.fallback_used}
+              variant="full"
+            />
           )}
           <span className="text-xs text-muted-foreground font-display">
             {new Date(img.created_at).toLocaleDateString()}
