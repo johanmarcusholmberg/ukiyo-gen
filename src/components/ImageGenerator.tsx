@@ -927,3 +927,66 @@ export default function ImageGenerator({
     </div>
   );
 }
+
+// ── Inline result-route + feedback row ────────────────────────────────
+interface ResultRouteRowProps {
+  provider: string;
+  model: string | null;
+  route: string | null;
+  fallback: boolean;
+  routingReason: string | null;
+  prompt: string;
+  styleKey: string;
+}
+
+function ResultRouteRow({
+  provider, model, route, fallback, routingReason, prompt, styleKey,
+}: ResultRouteRowProps) {
+  const { rating, setFeedback } = useImageFeedback({
+    prompt, styleKey, provider, route,
+  });
+  return (
+    <div className="flex flex-wrap items-center justify-center gap-2">
+      <RouteBadge
+        provider={provider}
+        model={model}
+        route={route}
+        fallback={fallback}
+        variant="full"
+      />
+      {routingReason && (
+        <span className="font-display text-[10px] text-muted-foreground italic">
+          {routingReason}
+        </span>
+      )}
+      <div className="flex items-center gap-1">
+        <button
+          type="button"
+          onClick={() => setFeedback("up")}
+          className={cn(
+            "p-1 rounded-sm border transition-colors",
+            rating === "up"
+              ? "bg-primary/15 border-primary/40 text-primary"
+              : "border-border text-muted-foreground hover:bg-muted",
+          )}
+          title="This result is good"
+        >
+          <ThumbsUp className="h-3 w-3" />
+        </button>
+        <button
+          type="button"
+          onClick={() => setFeedback("down")}
+          className={cn(
+            "p-1 rounded-sm border transition-colors",
+            rating === "down"
+              ? "bg-destructive/15 border-destructive/40 text-destructive"
+              : "border-border text-muted-foreground hover:bg-muted",
+          )}
+          title="This result is bad"
+        >
+          <ThumbsDown className="h-3 w-3" />
+        </button>
+      </div>
+    </div>
+  );
+}
