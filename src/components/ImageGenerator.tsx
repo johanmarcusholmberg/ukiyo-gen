@@ -646,21 +646,77 @@ export default function ImageGenerator({
           )}
         </div>
 
-        {/* Phase 1: Generator selector (compact badge → popover) */}
+        {/* Generator selector + comparison toggle */}
         <div className="flex items-center justify-between gap-2 flex-wrap">
-          <GeneratorBadge
-            value={generatorPref}
-            onChange={setGeneratorPref}
-            lastUsedProvider={lastProviderUsed}
-            lastFallbackUsed={lastFallbackUsed}
-          />
+          <div className="flex items-center gap-2 flex-wrap">
+            <GeneratorBadge
+              value={generatorPref}
+              onChange={setGeneratorPref}
+              lastUsedProvider={lastProviderUsed}
+              lastFallbackUsed={lastFallbackUsed}
+            />
+            <Button
+              type="button"
+              variant={compareOpen ? "default" : "outline"}
+              size="sm"
+              onClick={() => setCompareOpen((v) => !v)}
+              className="font-display text-[11px] h-7"
+              title="Generate the same prompt on both providers and pick the best result"
+            >
+              <Layers className="h-3 w-3 mr-1" />
+              {compareOpen ? "Hide compare" : "Compare providers"}
+            </Button>
+          </div>
           {lastProviderUsed && (
-            <span className="font-display text-[10px] text-muted-foreground">
-              Last: <span className="text-foreground">{lastProviderUsed}</span>
-              {lastFallbackUsed ? " · fallback" : ""}
-            </span>
+            <RouteBadge
+              provider={lastProviderUsed}
+              model={lastModelUsed}
+              route={lastExecutionRoute}
+              fallback={lastFallbackUsed}
+              variant="full"
+            />
           )}
         </div>
+
+        {compareOpen && (prompt.trim() || isInlineEditing) && (
+          <ProviderComparison
+            request={{
+              prompt: (isInlineEditing ? editPrompt : prompt).trim(),
+              styleKey: styleConfig.styleKey,
+              aspectRatio: effectiveAspectRatio,
+              backgroundStyle,
+              printMode: true,
+              referenceImageUrl:
+                isInlineEditing && imageUrl
+                  ? imageUrl
+                  : sourceImageUrl || undefined,
+              isEdit: !!(isInlineEditing && imageUrl) || !!sourceImageUrl,
+            }}
+            adapters={[
+              { id: "lovable", label: "SDXL (via Lovable)" },
+              { id: "gemini", label: "Gemini (direct)" },
+            ]}
+            onPick={({ imageUrl: pickedUrl, response }) => {
+              setBaseImageUrl(pickedUrl);
+              setImageUrl(pickedUrl);
+              setLastProviderUsed(response.generationProvider);
+              setLastModelUsed(response.generationModel);
+              setLastFallbackUsed(response.fallbackUsed);
+              setLastStrategyUsed(response.strategy);
+              setLastExecutionRoute(response.executionRoute);
+              setLastRoutingReason(response.routingReason ?? null);
+              setSavedToGallery(false);
+              resetUpscale();
+              setEnhancedImageUrl(null);
+              setCompareOpen(false);
+              toast({
+                title: "Result selected",
+                description: `Using ${response.generationProvider.toUpperCase()} via ${response.executionRoute}.`,
+              });
+            }}
+            onClose={() => setCompareOpen(false)}
+          />
+        )}
 
         <Button
           onClick={generate}
