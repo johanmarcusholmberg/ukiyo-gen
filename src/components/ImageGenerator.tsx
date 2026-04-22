@@ -251,11 +251,13 @@ export default function ImageGenerator({
       setLastModelUsed(gen.generationModel);
       setLastFallbackUsed(gen.fallbackUsed);
       setLastStrategyUsed(gen.strategy);
+      setLastExecutionRoute(gen.executionRoute);
+      setLastRoutingReason(gen.routingReason ?? null);
 
       console.log(
         `[ImageGenerator] generated provider=${gen.generationProvider} model=${gen.generationModel} ` +
-          `strategy=${gen.strategy} fallback=${gen.fallbackUsed} ` +
-          `adapters=${diagnostics.attemptedAdapters.map((a) => a.id).join(",")}`,
+          `route=${gen.executionRoute} strategy=${gen.strategy} fallback=${gen.fallbackUsed} ` +
+          `reason="${gen.routingReason ?? ""}" adapters=${diagnostics.attemptedAdapters.map((a) => a.id).join(",")}`,
       );
       if (diagnostics.fallbackTriggered) {
         toast({
@@ -323,6 +325,7 @@ export default function ImageGenerator({
       generationModel: lastModelUsed || undefined,
       providerStrategy: lastStrategyUsed || undefined,
       fallbackUsed: lastFallbackUsed,
+      executionRoute: lastExecutionRoute || undefined,
     };
   };
 
