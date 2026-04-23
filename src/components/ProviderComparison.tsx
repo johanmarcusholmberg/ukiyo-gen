@@ -37,7 +37,7 @@ export interface ComparisonResultPick {
 interface ProviderComparisonProps {
   request: CompareRequest;
   /** Adapters to race against each other. */
-  adapters: Array<{ id: "lovable" | "gemini" | "replicate"; label: string }>;
+  adapters: Array<{ id: "lovable" | "gemini" | "replicate" | "openai"; label: string }>;
   onPick: (pick: ComparisonResultPick) => void;
   onClose: () => void;
 }
@@ -74,6 +74,7 @@ export default function ProviderComparison({
           //   - "lovable"   → call Lovable adapter directly (the gateway path)
           //   - "replicate" → router with pref "sdxl" (now → direct Replicate)
           //   - "gemini"    → router with pref "gemini" (direct Gemini)
+          //   - "openai"    → router with pref "openai" (direct OpenAI gpt-image-1)
           let response;
           if (a.id === "lovable") {
             const { generateWithLovableAdapter } = await import(
@@ -90,7 +91,12 @@ export default function ProviderComparison({
               isEdit: request.isEdit,
             });
           } else {
-            const pref = a.id === "gemini" ? "gemini" : "sdxl";
+            const pref =
+              a.id === "gemini"
+                ? "gemini"
+                : a.id === "openai"
+                ? "openai"
+                : "sdxl";
             const out = await generateImage({
               prompt: request.prompt,
               styleKey: request.styleKey,
