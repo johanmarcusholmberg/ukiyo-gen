@@ -7,8 +7,8 @@
  * the upscale pipeline (see `src/lib/upscale-modes.ts`).
  */
 
-export type GeneratorPreference = "auto" | "gemini" | "sdxl";
-export type ResolvedProviderId = "gemini" | "sdxl";
+export type GeneratorPreference = "auto" | "gemini" | "sdxl" | "openai";
+export type ResolvedProviderId = "gemini" | "sdxl" | "openai";
 
 export interface GeneratorProvider {
   /** Internal id stored in the DB (`generation_provider`) */
@@ -59,6 +59,20 @@ export const GENERATOR_PROVIDERS: Record<ResolvedProviderId, GeneratorProvider> 
     fallbackPriority: 2,
     description: "Google Gemini via Lovable AI Gateway. Original generator — strong for edits and varied prompts.",
   },
+  openai: {
+    providerId: "openai",
+    modelId: "gpt-image-1",
+    displayName: "OpenAI",
+    shortLabel: "OpenAI",
+    enabled: true,
+    qualityTier: "premium",
+    speedTier: "medium",
+    intendedUse: "Premium prompt-adherence — strong for posters, travel prints, complex compositions",
+    supportsTextToImage: true,
+    supportsImageToImage: false, // gpt-image-1 edits handled separately; not wired in this phase
+    fallbackPriority: 3,
+    description: "OpenAI gpt-image-1 — direct API call (does not use Lovable credits). Best for posters and prompt-faithful compositions.",
+  },
 };
 
 export interface GeneratorOption {
@@ -87,6 +101,12 @@ export const GENERATOR_OPTIONS: GeneratorOption[] = [
     shortLabel: "Gemini",
     description: "Google Gemini — direct call, supports edits. Never silently falls back.",
   },
+  {
+    id: "openai",
+    label: "OpenAI",
+    shortLabel: "OpenAI",
+    description: "OpenAI gpt-image-1 — direct call (no Lovable credits). Premium prompt adherence; never silently falls back.",
+  },
 ];
 
 export const DEFAULT_GENERATOR: GeneratorPreference = "auto";
@@ -97,7 +117,7 @@ const STORAGE_KEY = "generator-preference";
 export function loadGeneratorPreference(): GeneratorPreference {
   try {
     const raw = sessionStorage.getItem(STORAGE_KEY);
-    if (raw === "auto" || raw === "sdxl" || raw === "gemini") return raw;
+    if (raw === "auto" || raw === "sdxl" || raw === "gemini" || raw === "openai") return raw;
   } catch { /* ignore */ }
   return DEFAULT_GENERATOR;
 }
