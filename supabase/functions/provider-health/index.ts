@@ -158,7 +158,7 @@ serve(async (req) => {
 
   try {
     if (req.method === "GET") {
-      const rows = [quickStatus("sdxl"), quickStatus("gemini")];
+      const rows = [quickStatus("sdxl"), quickStatus("gemini"), quickStatus("openai")];
       return new Response(JSON.stringify({ providers: rows }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -167,11 +167,11 @@ serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const { providerId } = body || {};
 
-    let toTest: Array<"gemini" | "sdxl">;
-    if (providerId === "gemini" || providerId === "sdxl") {
+    let toTest: Array<"gemini" | "sdxl" | "openai">;
+    if (providerId === "gemini" || providerId === "sdxl" || providerId === "openai") {
       toTest = [providerId];
     } else {
-      toTest = ["sdxl", "gemini"];
+      toTest = ["sdxl", "gemini", "openai"];
     }
 
     const rows = await Promise.all(toTest.map(liveTest));
