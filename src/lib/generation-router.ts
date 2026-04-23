@@ -26,10 +26,11 @@ import type {
 import { generateWithLovableAdapter } from "@/lib/generation-providers/lovable";
 import { generateWithGeminiAdapter } from "@/lib/generation-providers/gemini";
 import { generateWithReplicateAdapter } from "@/lib/generation-providers/replicate";
+import { generateWithOpenAIAdapter } from "@/lib/generation-providers/openai";
 import { decideRoute, type RouteFamily } from "@/lib/style-routing";
 import { getFeedbackSignal } from "@/hooks/use-image-feedback";
 
-export type AdapterId = "lovable" | "gemini" | "replicate";
+export type AdapterId = "lovable" | "gemini" | "replicate" | "openai";
 
 interface AdapterRun {
   id: AdapterId;
@@ -40,11 +41,14 @@ const ADAPTERS: Record<AdapterId, AdapterRun> = {
   lovable: { id: "lovable", run: generateWithLovableAdapter },
   gemini: { id: "gemini", run: generateWithGeminiAdapter },
   replicate: { id: "replicate", run: generateWithReplicateAdapter },
+  openai: { id: "openai", run: generateWithOpenAIAdapter },
 };
 
 /** Provider id used in the feedback store, derived from adapter id. */
-function feedbackProviderForAdapter(id: AdapterId): "gemini" | "sdxl" {
-  return id === "gemini" ? "gemini" : "sdxl";
+function feedbackProviderForAdapter(id: AdapterId): "gemini" | "sdxl" | "openai" {
+  if (id === "gemini") return "gemini";
+  if (id === "openai") return "openai";
+  return "sdxl";
 }
 
 function adapterForFamily(family: RouteFamily): AdapterRun {
@@ -55,6 +59,8 @@ function adapterForFamily(family: RouteFamily): AdapterRun {
       return ADAPTERS.gemini;
     case "direct_replicate":
       return ADAPTERS.replicate;
+    case "direct_openai":
+      return ADAPTERS.openai;
     case "lovable_sdxl":
     default:
       return ADAPTERS.lovable;
@@ -99,6 +105,14 @@ export function resolveAdapterChain(
     case "gemini":
       return { chain: [ADAPTERS.gemini], reason: "manual: gemini (direct)" };
 
+    case "openai":
+      // Manual OpenAI: fail loudly, no silent fallback. Direct API call
+      // — does NOT consume Lovable image-generation credits.
+      return {
+        chain: [ADAPTERS.openai],
+        reason: "manual: openai (direct, no Lovable credits)",
+      };
+
     case "sdxl":
       // SDXL preference now means "direct Replicate first, Lovable as
       // a safety fallback". This shifts SDXL traffic off Lovable while
@@ -115,10 +129,18 @@ export function resolveAdapterChain(
         isEdit,
         printIntent: !!req.printMode,
       });
-      // Build a 3-step chain: primary → secondary direct provider → Lovable safety net.
+      // Build a chain: primary → secondary direct provider → Lovable safety net.
+      // Auto deliberately keeps OpenAI OUT of the default chain to avoid
+      // running up OpenAI bills on every request — it's surfaced as a
+      // manual selection / comparison-mode option only. (Style-routing
+      // can opt OpenAI in later by returning `direct_openai` as primary.)
       let primary = adapterForFamily(decision.primary);
       let secondary: AdapterRun =
-        primary.id === "gemini" ? ADAPTERS.replicate : ADAPTERS.gemini;
+        primary.id === "gemini"
+          ? ADAPTERS.replicate
+          : primary.id === "openai"
+          ? ADAPTERS.gemini
+          : ADAPTERS.gemini;
       const safetyNet = ADAPTERS.lovable;
 
       // Feedback-driven re-ordering — deterministic, conservative.
@@ -166,6 +188,8 @@ function annotateFallback(
       ? "direct_gemini_fallback"
       : rescuerId === "replicate"
       ? "direct_replicate_fallback"
+      : rescuerId === "openai"
+      ? "direct_openai_fallback"
       : "lovable_gateway_fallback";
   return {
     ...response,

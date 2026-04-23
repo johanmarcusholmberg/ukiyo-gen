@@ -695,6 +695,7 @@ export default function ImageGenerator({
             adapters={[
               { id: "replicate", label: "SDXL (direct Replicate)" },
               { id: "gemini", label: "Gemini (direct)" },
+              { id: "openai", label: "OpenAI gpt-image-1 (direct)" },
               { id: "lovable", label: "SDXL (via Lovable)" },
             ]}
             onPick={({ imageUrl: pickedUrl, response }) => {

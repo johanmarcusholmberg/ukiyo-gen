@@ -17,7 +17,7 @@
  * Rules are explicit and easy to audit; no opaque AI-decides logic.
  */
 
-export type RouteFamily = "lovable_sdxl" | "direct_gemini" | "direct_replicate";
+export type RouteFamily = "lovable_sdxl" | "direct_gemini" | "direct_replicate" | "direct_openai";
 
 export interface StyleRoutingDecision {
   /** Which adapter family Auto should try first. */
@@ -153,9 +153,11 @@ export type ExecutionRoute =
   | "lovable_gateway_sdxl"
   | "direct_gemini"
   | "direct_replicate"
+  | "direct_openai"
   | "lovable_gateway_fallback"
   | "direct_gemini_fallback"
-  | "direct_replicate_fallback";
+  | "direct_replicate_fallback"
+  | "direct_openai_fallback";
 
 export function executionRouteLabel(route?: string | null): string {
   switch (route) {
@@ -163,16 +165,18 @@ export function executionRouteLabel(route?: string | null): string {
     case "lovable_gateway_sdxl": return "Lovable gateway (SDXL)";
     case "direct_gemini": return "Direct Gemini";
     case "direct_replicate": return "Direct Replicate";
+    case "direct_openai": return "Direct OpenAI";
     case "lovable_gateway_fallback": return "Lovable · fallback";
     case "direct_gemini_fallback": return "Direct Gemini · fallback";
     case "direct_replicate_fallback": return "Direct Replicate · fallback";
+    case "direct_openai_fallback": return "Direct OpenAI · fallback";
     default: return "Unknown route";
   }
 }
 
 /**
  * Visual route family for badge styling:
- *   - "direct"   → 🟢 we hit the provider API straight (Replicate / Gemini)
+ *   - "direct"   → 🟢 we hit the provider API straight (Replicate / Gemini / OpenAI)
  *   - "lovable"  → 🟡 we went through the Lovable gateway
  *   - "fallback" → 🔁 the primary route failed and we recovered via another
  */
