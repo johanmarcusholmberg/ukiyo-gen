@@ -129,8 +129,8 @@ const PHOTOREAL_FAMILY = new Set([
   "urbannoir",
 ]);
 
-/** Coarse provider family — SDXL benefits from stronger cleanup than Gemini. */
-export type GeneratorFamily = "sdxl" | "gemini" | "unknown";
+/** Coarse provider family — SDXL benefits from stronger cleanup than Gemini/OpenAI. */
+export type GeneratorFamily = "sdxl" | "gemini" | "openai" | "unknown";
 
 export interface ResolveRecipeInput {
   /** Style key from style-config (preferred). */
@@ -191,6 +191,7 @@ export function generatorFamilyFromProvider(
   const p = provider.toLowerCase();
   if (p.includes("sdxl") || p.includes("stability")) return "sdxl";
   if (p.includes("gemini") || p.includes("google")) return "gemini";
+  if (p.includes("openai") || p.includes("gpt-image")) return "openai";
   return "unknown";
 }
 
