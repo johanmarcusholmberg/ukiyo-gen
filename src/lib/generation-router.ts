@@ -105,6 +105,14 @@ export function resolveAdapterChain(
     case "gemini":
       return { chain: [ADAPTERS.gemini], reason: "manual: gemini (direct)" };
 
+    case "openai":
+      // Manual OpenAI: fail loudly, no silent fallback. Direct API call
+      // — does NOT consume Lovable image-generation credits.
+      return {
+        chain: [ADAPTERS.openai],
+        reason: "manual: openai (direct, no Lovable credits)",
+      };
+
     case "sdxl":
       // SDXL preference now means "direct Replicate first, Lovable as
       // a safety fallback". This shifts SDXL traffic off Lovable while
@@ -121,10 +129,18 @@ export function resolveAdapterChain(
         isEdit,
         printIntent: !!req.printMode,
       });
-      // Build a 3-step chain: primary → secondary direct provider → Lovable safety net.
+      // Build a chain: primary → secondary direct provider → Lovable safety net.
+      // Auto deliberately keeps OpenAI OUT of the default chain to avoid
+      // running up OpenAI bills on every request — it's surfaced as a
+      // manual selection / comparison-mode option only. (Style-routing
+      // can opt OpenAI in later by returning `direct_openai` as primary.)
       let primary = adapterForFamily(decision.primary);
       let secondary: AdapterRun =
-        primary.id === "gemini" ? ADAPTERS.replicate : ADAPTERS.gemini;
+        primary.id === "gemini"
+          ? ADAPTERS.replicate
+          : primary.id === "openai"
+          ? ADAPTERS.gemini
+          : ADAPTERS.gemini;
       const safetyNet = ADAPTERS.lovable;
 
       // Feedback-driven re-ordering — deterministic, conservative.
