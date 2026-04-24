@@ -16,6 +16,21 @@ import {
   type UpscaleRecipe,
   type ResolveRecipeInput,
 } from "@/lib/upscale-recipes";
+import {
+  runReplicateUpscale,
+  type ReplicateUpscaleMethod,
+} from "@/lib/upscale-providers/replicate";
+
+/**
+ * Modes that route through the dedicated direct-Replicate edge function
+ * (`upscale-image-replicate`) instead of the legacy `upscale-image` dispatcher.
+ *
+ * These modes have NO Lovable fallback — failures surface to the user.
+ */
+const DIRECT_REPLICATE_METHOD: Partial<Record<UpscaleMode, ReplicateUpscaleMethod>> = {
+  realesrgan_4x: "realesrgan",
+  print_plus: "supir",
+};
 
 // Backwards-compatible re-exports (older callers expect these symbols)
 export type UpscaleStatus = UpscaleStage;
@@ -122,6 +137,50 @@ export function useUpscale() {
       }, 4000);
 
       try {
+        /* ---------------- DIRECT REPLICATE PATH ---------------- */
+        // For realesrgan_4x and print_plus we bypass the legacy dispatcher
+        // and call the dedicated direct-Replicate edge function. There is
+        // no Lovable fallback on this path — failures bubble up.
+        const directMethod = DIRECT_REPLICATE_METHOD[mode];
+        if (directMethod) {
+          setStage("upscaling");
+          const direct = await runReplicateUpscale({
+            imageUrl: sourceUrl,
+            method: directMethod,
+            scale: UPSCALE_MODES[mode].scaleFactor,
+          });
+
+          cleanupTimers();
+
+          const result: UpscaleResult = {
+            imageUrl: direct.upscaledImageUrl,
+            mode,
+            scale: direct.scale,
+            provider: direct.provider,
+            downshifted: false,
+            async: false,
+          };
+
+          // Persist enhanced master to the gallery row (never overwrites base).
+          if (opts?.galleryImageId) {
+            setStage("saving");
+            try {
+              await updateEnhancedAsset(opts.galleryImageId, result.imageUrl, {
+                enhancementModel: result.provider,
+                upscaleFactor: result.scale,
+                upscaleMode: result.mode,
+                enhancedWidthPx: direct.width ?? undefined,
+                enhancedHeightPx: direct.height ?? undefined,
+              });
+            } catch (err) {
+              console.warn("Failed to persist enhanced master to gallery:", err);
+            }
+          }
+
+          setStage("done");
+          return result;
+        }
+
         const { data, error } = await supabase.functions.invoke("upscale-image", {
           body: {
             imageUrl: sourceUrl,
