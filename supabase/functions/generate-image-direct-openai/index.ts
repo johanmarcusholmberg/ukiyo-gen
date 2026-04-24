@@ -113,6 +113,7 @@ serve(async (req) => {
       isEdit: false,
       printMode: !!printMode,
       provider: "openai",
+      strictness,
     });
     const compiledPrompt = compiled.prompt;
 
