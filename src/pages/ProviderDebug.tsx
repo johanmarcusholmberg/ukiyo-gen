@@ -12,6 +12,8 @@ import {
   STRICTNESS_OPTIONS,
   DRIFT_RISK_LABEL,
   DRIFT_RISK_CLASS,
+  loadStrictness,
+  saveStrictness,
   type Strictness,
   type DriftRisk,
 } from "@/lib/style-strictness";
