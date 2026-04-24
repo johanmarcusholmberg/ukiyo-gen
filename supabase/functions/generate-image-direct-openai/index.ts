@@ -27,6 +27,8 @@ interface Body {
   printMode?: boolean;
   /** Optional: "low" | "medium" | "high" | "auto" (defaults to "high"). */
   quality?: "low" | "medium" | "high" | "auto";
+  /** Optional: "balanced" | "strict" | "very_strict". */
+  strictness?: "balanced" | "strict" | "very_strict";
 }
 
 const OPENAI_MODEL = "gpt-image-1";
