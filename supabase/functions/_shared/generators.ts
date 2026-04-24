@@ -6,6 +6,12 @@
  */
 
 import { compilePrompt, compilePromptForSDXL } from "./prompt-compiler.ts";
+import {
+  defaultStrictnessFor,
+  validateCompiledPrompt,
+  type Strictness,
+} from "./style-meta.ts";
+import { STYLE_RULES } from "./prompt-compiler.ts";
 
 export type ResolvedProviderId = "gemini" | "sdxl";
 export type GeneratorPreference = "auto" | ResolvedProviderId;
@@ -27,6 +33,8 @@ export interface GenerateArgs {
   printMode?: boolean;
   isEdit?: boolean;
   sourceImageUrl?: string;
+  /** Optional style strictness — defaults per-style + per-provider. */
+  strictness?: Strictness;
 }
 
 /** Map our supported aspect ratios to SDXL-friendly target sizes (longest side ~1024). */
@@ -123,16 +131,42 @@ export async function generateWithSDXL(args: GenerateArgs): Promise<ProviderResu
     );
   }
 
+  const strictness: Strictness =
+    args.strictness ?? defaultStrictnessFor(args.styleKey, "sdxl");
+
   const compiled = compilePromptForSDXL(args.userPrompt, args.styleKey, {
     aspectRatio: args.aspectRatio,
     backgroundStyle: args.backgroundStyle,
     isEdit: false,
     printMode: !!args.printMode,
     provider: "sdxl",
+    strictness,
   });
 
+  // Pre-generation validation — log issues but only block on errors.
+  const rules = STYLE_RULES[args.styleKey];
+  const report = validateCompiledPrompt({
+    styleKey: args.styleKey,
+    provider: "sdxl",
+    prompt: compiled.prompt,
+    negativePrompt: compiled.negativePrompt,
+    styleMustHavesCount:
+      (rules?.styleAnchors.length ?? 0) + (rules?.styleRules.length ?? 0),
+    styleAvoidCount:
+      (rules?.avoidRules.length ?? 0) + (rules?.blockedTraits?.length ?? 0),
+  });
+  for (const i of report.issues) {
+    console.log(`[sdxl/validation] ${i.level}: ${i.message}`);
+  }
+  if (!report.ok) {
+    throw new ProviderError(
+      "invalid-prompt",
+      `SDXL prompt failed validation: ${report.issues.map((i) => i.message).join("; ")}`,
+    );
+  }
+
   console.log(
-    `[sdxl] style=${args.styleKey} category=${compiled.category} ` +
+    `[sdxl] style=${args.styleKey} category=${compiled.category} strictness=${strictness} ` +
       `prompt_len=${compiled.prompt.length} neg_len=${(compiled.negativePrompt ?? "").length}`,
   );
 

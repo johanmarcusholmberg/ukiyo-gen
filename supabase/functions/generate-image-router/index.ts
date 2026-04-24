@@ -25,6 +25,8 @@ interface Body {
   // Normalized contract additions (currently informational only).
   sizeIntent?: "preview" | "standard" | "print";
   qualityIntent?: "fast" | "balanced" | "premium";
+  /** Style strictness: balanced | strict | very_strict. */
+  strictness?: "balanced" | "strict" | "very_strict";
 }
 
 serve(async (req) => {
@@ -42,6 +44,7 @@ serve(async (req) => {
       printMode,
       sourceImageUrl,
       generatorPreference,
+      strictness,
     } = body || {};
 
     if (!prompt || typeof prompt !== "string") {
@@ -70,6 +73,13 @@ serve(async (req) => {
       );
     }
 
+    const validStrictness =
+      strictness === "balanced" ||
+      strictness === "strict" ||
+      strictness === "very_strict"
+        ? strictness
+        : undefined;
+
     const pref =
       generatorPreference === "sdxl" ||
       generatorPreference === "gemini" ||
@@ -90,6 +100,7 @@ serve(async (req) => {
         printMode: !!printMode,
         isEdit,
         sourceImageUrl,
+        strictness: validStrictness,
       });
 
       console.log(

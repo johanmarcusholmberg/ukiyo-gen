@@ -417,6 +417,15 @@ export const STYLE_RULES: Record<string, StyleRules> = {
 // ── Prompt compiler ──
 
 import { getSdxlParts, getOpenAIParts, type ResolvedProviderId } from "./prompt-profiles.ts";
+import {
+  defaultStrictnessFor,
+  getMediumTokens,
+  getStyleMeta,
+  STRICTNESS_PROFILES,
+  type Strictness,
+} from "./style-meta.ts";
+
+export type { Strictness } from "./style-meta.ts";
 
 export interface CompileOptions {
   aspectRatio?: string;
@@ -428,6 +437,8 @@ export interface CompileOptions {
   printMode?: boolean;
   /** Provider the prompt is being compiled for. Default = "gemini" (legacy) */
   provider?: ResolvedProviderId;
+  /** Style strictness — controls SDXL anchor repetition + negative boost. */
+  strictness?: Strictness;
 }
 
 export interface CompiledPrompt {
@@ -575,11 +586,17 @@ export function compilePromptForSDXL(
 ): CompiledPrompt {
   const rules = STYLE_RULES[styleKey];
   const sdxl = getSdxlParts(styleKey);
+  const meta = getStyleMeta(styleKey);
+  const strictness: Strictness =
+    options.strictness ?? defaultStrictnessFor(styleKey, "sdxl");
+  const profile = STRICTNESS_PROFILES[strictness];
   const { aspectRatio, backgroundStyle } = options;
 
-  // Style anchors (from existing style def) + provider reinforcement
+  // Style anchors (from existing style def) + provider reinforcement + display-name anchor
   const anchors = rules?.styleAnchors ?? [];
   const colorRules = rules?.colorRules ?? [];
+  const mediumTokens = getMediumTokens(styleKey, 4);
+  const displayNameToken = meta.displayName.toLowerCase();
 
   // Background hint kept short — long sentences hurt SDXL
   const bgHint =
@@ -587,9 +604,12 @@ export function compilePromptForSDXL(
       ? "warm cream paper background"
       : "pure white background";
 
-  // Front-loaded subject (SDXL responds best to subject first)
+  // FRONT-LOAD: display-name anchor + subject + style anchors + medium + reinforcement.
+  // (SDXL weights early tokens heavily — putting the medium first locks the style.)
   const head = [
+    displayNameToken,
     userPrompt,
+    ...mediumTokens.slice(0, 2),
     ...anchors,
     ...sdxl.reinforcement,
   ].join(", ");
@@ -603,11 +623,25 @@ export function compilePromptForSDXL(
     .join(", ");
 
   // Tail "style lock" — repeats the most important constraints so they
-  // re-influence later sampling steps.
-  const styleLock = [
+  // re-influence later sampling steps. Strictness controls how many anchor
+  // repeats appear.
+  const lockTokens = [
     ...sdxl.reinforcement.slice(0, 6),
+    ...mediumTokens,
     bgHint,
-  ].join(", ");
+  ];
+  const styleLock = lockTokens.join(", ");
+
+  // Anchor re-repetition based on strictness:
+  //   balanced → display name appears once (head only)
+  //   strict → also at the end
+  //   very_strict → also in the middle reconfirm tail
+  const tailAnchorRepeats = Math.max(0, profile.sdxlAnchorRepeats - 1);
+  const tailAnchors = Array(tailAnchorRepeats).fill(displayNameToken).join(", ");
+
+  const reconfirm = profile.appendReconfirmTail
+    ? `style reconfirm: ${displayNameToken}, ${mediumTokens.join(", ")}, 2D illustrated, not photo, not 3D`
+    : "";
 
   const prompt = [
     head,
@@ -615,11 +649,13 @@ export function compilePromptForSDXL(
     colorTokens,
     bgHint,
     `style lock: ${styleLock}`,
+    reconfirm,
+    tailAnchors,
   ]
     .filter(Boolean)
     .join(", ");
 
-  // Negative prompt: provider profile + style avoidRules (compressed)
+  // Negative prompt: provider profile + style avoidRules + strictness boosters.
   const styleAvoid = [
     ...(rules?.avoidRules ?? []),
     ...(rules?.blockedTraits ?? []),
@@ -627,7 +663,24 @@ export function compilePromptForSDXL(
     .filter((r) => r.length < 60)
     .slice(0, 8);
 
-  const negativePrompt = [...sdxl.negative, ...styleAvoid].join(", ");
+  // Universal anti-photoreal-drift booster scaled by strictness.
+  const STRICT_NEG_BOOSTERS = [
+    "photorealistic",
+    "hyperreal",
+    "realistic camera look",
+    "lens blur",
+    "shallow depth of field",
+    "dslr photo",
+    "stock photo",
+    "generic ai art",
+    "midjourney style",
+    "noise",
+    "grainy render",
+    "cgi character",
+  ];
+  const negBoosters = STRICT_NEG_BOOSTERS.slice(0, profile.sdxlNegativeBoost);
+
+  const negativePrompt = [...sdxl.negative, ...styleAvoid, ...negBoosters].join(", ");
 
   // Aspect ratio is communicated via width/height in the SDXL request,
   // not the prompt — so we omit it here intentionally.
@@ -726,6 +779,7 @@ export function createStyleHandler(styleKey: string) {
         backgroundStyle,
         printMode,
         generatorPreference,
+        strictness,
       } = body || {};
 
       if (!prompt || typeof prompt !== "string") {
@@ -742,6 +796,13 @@ export function createStyleHandler(styleKey: string) {
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
         );
       }
+
+      const validStrictness =
+        strictness === "balanced" ||
+        strictness === "strict" ||
+        strictness === "very_strict"
+          ? strictness
+          : undefined;
 
       // Lazy import so this file doesn't break unused-edge-fn deploys.
       const { runWithResolver, ProviderError } = await import("./generators.ts");
@@ -767,6 +828,7 @@ export function createStyleHandler(styleKey: string) {
           printMode: !!printMode,
           isEdit,
           sourceImageUrl,
+          strictness: validStrictness,
         });
 
         return new Response(

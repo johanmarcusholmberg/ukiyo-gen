@@ -27,6 +27,8 @@ interface Body {
   printMode?: boolean;
   /** Optional: "low" | "medium" | "high" | "auto" (defaults to "high"). */
   quality?: "low" | "medium" | "high" | "auto";
+  /** Optional: "balanced" | "strict" | "very_strict". */
+  strictness?: "balanced" | "strict" | "very_strict";
 }
 
 const OPENAI_MODEL = "gpt-image-1";
@@ -70,6 +72,7 @@ serve(async (req) => {
       backgroundStyle,
       printMode,
       quality,
+      strictness,
     } = body || {};
 
     if (!prompt || typeof prompt !== "string") {
@@ -110,6 +113,7 @@ serve(async (req) => {
       isEdit: false,
       printMode: !!printMode,
       provider: "openai",
+      strictness,
     });
     const compiledPrompt = compiled.prompt;
 
