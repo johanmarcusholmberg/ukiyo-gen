@@ -282,10 +282,9 @@ export default function ImageGenerator({
 
       setLoading(false);
 
-      // Auto-upscale if a real mode is selected
-      if (upscaleMode !== "none") {
-        runUpscale(upscaleMode, savedGalleryIdRef.current);
-      }
+      // COST-CONTROL RULE: do NOT auto-upscale.
+      // Enhancement is always user-triggered via the "Enhance for print"
+      // dialog so the user explicitly approves the cost.
     } catch (err: any) {
       const desc = err?.message || "Something went wrong";
       // If user manually picked a provider that failed, surface the explicit message
