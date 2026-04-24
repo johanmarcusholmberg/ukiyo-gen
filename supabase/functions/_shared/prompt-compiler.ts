@@ -417,6 +417,15 @@ export const STYLE_RULES: Record<string, StyleRules> = {
 // ── Prompt compiler ──
 
 import { getSdxlParts, getOpenAIParts, type ResolvedProviderId } from "./prompt-profiles.ts";
+import {
+  defaultStrictnessFor,
+  getMediumTokens,
+  getStyleMeta,
+  STRICTNESS_PROFILES,
+  type Strictness,
+} from "./style-meta.ts";
+
+export type { Strictness } from "./style-meta.ts";
 
 export interface CompileOptions {
   aspectRatio?: string;
@@ -428,6 +437,8 @@ export interface CompileOptions {
   printMode?: boolean;
   /** Provider the prompt is being compiled for. Default = "gemini" (legacy) */
   provider?: ResolvedProviderId;
+  /** Style strictness — controls SDXL anchor repetition + negative boost. */
+  strictness?: Strictness;
 }
 
 export interface CompiledPrompt {
