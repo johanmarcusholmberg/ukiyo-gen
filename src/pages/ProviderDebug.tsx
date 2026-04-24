@@ -358,7 +358,7 @@ export default function ProviderDebug() {
             Gemini gets the rich descriptive prompt.
           </p>
 
-          <div className="grid grid-cols-1 sm:grid-cols-[200px,1fr,auto] gap-2 items-start">
+          <div className="grid grid-cols-1 sm:grid-cols-[180px,160px,1fr,auto] gap-2 items-start">
             <Select value={promptStyle} onValueChange={setPromptStyle}>
               <SelectTrigger className="font-display text-xs">
                 <SelectValue placeholder="Style" />
@@ -367,6 +367,21 @@ export default function ProviderDebug() {
                 {DEBUG_STYLE_KEYS.map((s) => (
                   <SelectItem key={s} value={s} className="font-display text-xs">
                     {s}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={strictness} onValueChange={handleStrictnessChange}>
+              <SelectTrigger className="font-display text-xs">
+                <SelectValue placeholder="Strictness" />
+              </SelectTrigger>
+              <SelectContent>
+                {STRICTNESS_OPTIONS.map((opt) => (
+                  <SelectItem key={opt.id} value={opt.id} className="font-display text-xs">
+                    <div className="flex flex-col">
+                      <span>{opt.label}</span>
+                      <span className="text-[10px] text-muted-foreground">{opt.description}</span>
+                    </div>
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -380,7 +395,7 @@ export default function ProviderDebug() {
             />
             <Button
               size="sm"
-              onClick={comparePrompts}
+              onClick={() => comparePrompts()}
               disabled={comparingPrompt || !promptSubject.trim()}
               className="font-display text-xs"
             >
@@ -397,22 +412,30 @@ export default function ProviderDebug() {
             <div className="space-y-3 pt-2 border-t border-border">
               <p className="font-display text-[11px] text-muted-foreground">
                 Style: <span className="text-foreground">{promptResult.style}</span> · Category:{" "}
-                <span className="text-foreground">{promptResult.category}</span>
+                <span className="text-foreground">{promptResult.category}</span> · Strictness:{" "}
+                <span className="text-foreground">{strictness}</span>
               </p>
 
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-                <div className="space-y-1">
-                  <p className="font-display text-[10px] uppercase tracking-wider text-muted-foreground">
-                    Gemini · {promptResult.gemini.length} chars
-                  </p>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <p className="font-display text-[10px] uppercase tracking-wider text-muted-foreground">
+                      Gemini · {promptResult.gemini.length} chars
+                    </p>
+                    <DriftBadge risk={promptResult.gemini.driftRisk} />
+                  </div>
                   <pre className="bg-muted/50 border border-border rounded-sm p-2 text-[10px] leading-snug whitespace-pre-wrap break-words max-h-80 overflow-y-auto font-mono text-foreground">
                     {promptResult.gemini.prompt}
                   </pre>
+                  <ValidationList report={promptResult.gemini.validation} />
                 </div>
-                <div className="space-y-1">
-                  <p className="font-display text-[10px] uppercase tracking-wider text-muted-foreground">
-                    SDXL · {promptResult.sdxl.length} chars
-                  </p>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <p className="font-display text-[10px] uppercase tracking-wider text-muted-foreground">
+                      SDXL · {promptResult.sdxl.length} chars
+                    </p>
+                    <DriftBadge risk={promptResult.sdxl.driftRisk} />
+                  </div>
                   <pre className="bg-muted/50 border border-border rounded-sm p-2 text-[10px] leading-snug whitespace-pre-wrap break-words max-h-80 overflow-y-auto font-mono text-foreground">
                     {promptResult.sdxl.prompt}
                   </pre>
@@ -426,15 +449,20 @@ export default function ProviderDebug() {
                       </pre>
                     </>
                   )}
+                  <ValidationList report={promptResult.sdxl.validation} />
                 </div>
                 {promptResult.openai && (
-                  <div className="space-y-1">
-                    <p className="font-display text-[10px] uppercase tracking-wider text-muted-foreground">
-                      OpenAI · {promptResult.openai.length} chars
-                    </p>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <p className="font-display text-[10px] uppercase tracking-wider text-muted-foreground">
+                        OpenAI · {promptResult.openai.length} chars
+                      </p>
+                      <DriftBadge risk={promptResult.openai.driftRisk} />
+                    </div>
                     <pre className="bg-muted/50 border border-border rounded-sm p-2 text-[10px] leading-snug whitespace-pre-wrap break-words max-h-80 overflow-y-auto font-mono text-foreground">
                       {promptResult.openai.prompt}
                     </pre>
+                    <ValidationList report={promptResult.openai.validation} />
                   </div>
                 )}
               </div>
