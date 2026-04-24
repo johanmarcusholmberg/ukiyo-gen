@@ -779,6 +779,7 @@ export function createStyleHandler(styleKey: string) {
         backgroundStyle,
         printMode,
         generatorPreference,
+        strictness,
       } = body || {};
 
       if (!prompt || typeof prompt !== "string") {
@@ -795,6 +796,13 @@ export function createStyleHandler(styleKey: string) {
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
         );
       }
+
+      const validStrictness =
+        strictness === "balanced" ||
+        strictness === "strict" ||
+        strictness === "very_strict"
+          ? strictness
+          : undefined;
 
       // Lazy import so this file doesn't break unused-edge-fn deploys.
       const { runWithResolver, ProviderError } = await import("./generators.ts");
@@ -820,6 +828,7 @@ export function createStyleHandler(styleKey: string) {
           printMode: !!printMode,
           isEdit,
           sourceImageUrl,
+          strictness: validStrictness,
         });
 
         return new Response(
