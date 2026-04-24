@@ -25,6 +25,8 @@ interface Body {
   // Normalized contract additions (currently informational only).
   sizeIntent?: "preview" | "standard" | "print";
   qualityIntent?: "fast" | "balanced" | "premium";
+  /** Style strictness: balanced | strict | very_strict. */
+  strictness?: "balanced" | "strict" | "very_strict";
 }
 
 serve(async (req) => {
