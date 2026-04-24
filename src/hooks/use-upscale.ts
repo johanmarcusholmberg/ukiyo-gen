@@ -16,6 +16,21 @@ import {
   type UpscaleRecipe,
   type ResolveRecipeInput,
 } from "@/lib/upscale-recipes";
+import {
+  runReplicateUpscale,
+  type ReplicateUpscaleMethod,
+} from "@/lib/upscale-providers/replicate";
+
+/**
+ * Modes that route through the dedicated direct-Replicate edge function
+ * (`upscale-image-replicate`) instead of the legacy `upscale-image` dispatcher.
+ *
+ * These modes have NO Lovable fallback — failures surface to the user.
+ */
+const DIRECT_REPLICATE_METHOD: Partial<Record<UpscaleMode, ReplicateUpscaleMethod>> = {
+  realesrgan_4x: "realesrgan",
+  print_plus: "supir",
+};
 
 // Backwards-compatible re-exports (older callers expect these symbols)
 export type UpscaleStatus = UpscaleStage;
