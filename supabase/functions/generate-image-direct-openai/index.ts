@@ -72,6 +72,7 @@ serve(async (req) => {
       backgroundStyle,
       printMode,
       quality,
+      strictness,
     } = body || {};
 
     if (!prompt || typeof prompt !== "string") {
