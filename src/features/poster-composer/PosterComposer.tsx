@@ -186,10 +186,14 @@ export default function PosterComposer({
     <div className="grid grid-cols-1 lg:grid-cols-[1fr,320px] gap-6">
       {/* ── Preview ─────────────────────────────────────────── */}
       <div className="space-y-3">
-        <div className="bg-muted/30 border border-border rounded-md p-4 flex items-center justify-center">
+        <div
+          className="border border-border rounded-md p-4 flex items-center justify-center"
+          style={{ background: posterSurfaceBackground }}
+        >
           <div
-            className="relative shadow-lg bg-white"
+            className="relative shadow-lg"
             style={{
+              background: posterSurfaceBackground,
               // Mimic 5:7 aspect ratio of the default poster format.
               aspectRatio: "5 / 7",
               width: "100%",
