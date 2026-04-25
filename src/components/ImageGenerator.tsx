@@ -827,6 +827,126 @@ export default function ImageGenerator({
           />
         )}
 
+        {/* ── Poster setup (optional) ───────────────────────────────────
+            Lets the user pre-configure poster template + text BEFORE
+            hitting Generate. After generation, the Poster Composer
+            opens auto-filled with these values.
+            Generation logic is NOT changed — composer text is only sent
+            to the model when textMode === "generated". */}
+        <Import will be added below — see Poster setup details block. */}
+        <details className="rounded-sm border border-border bg-card/40 group">
+          <summary className="cursor-pointer select-none px-3 py-2 flex items-center gap-2 font-display text-xs">
+            <LayoutPanelTop className="h-3.5 w-3.5 text-primary" />
+            <span className="font-bold text-foreground">Poster setup</span>
+            <span className="text-muted-foreground">(optional)</span>
+            <span className="ml-auto text-[10px] text-muted-foreground">
+              {posterTextMode === "composer" ? "Clean text" : "Artistic text"}
+              {" · "}
+              {getPosterTemplate(posterTemplateId).name}
+            </span>
+          </summary>
+          <div className="px-3 pb-3 pt-1 space-y-3">
+            <div className="space-y-1">
+              <Label className="font-display text-[11px] uppercase tracking-wider text-muted-foreground">
+                Template
+              </Label>
+              <select
+                value={posterTemplateId}
+                onChange={(e) => setPosterTemplateId(e.target.value as PosterTemplateId)}
+                className="w-full bg-background border border-border rounded-sm px-2 py-1.5 font-display text-xs"
+              >
+                {POSTER_TEMPLATE_LIST.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name} — {t.description}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-1">
+              <Label className="font-display text-[11px] uppercase tracking-wider text-muted-foreground">
+                Text handling
+              </Label>
+              <div className="space-y-1">
+                <label className="flex items-start gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="poster-text-mode"
+                    checked={posterTextMode === "composer"}
+                    onChange={() => setPosterTextMode("composer")}
+                    className="mt-0.5"
+                  />
+                  <span className="flex flex-col">
+                    <span className="font-display text-xs text-foreground">Clean text (Poster Composer)</span>
+                    <span className="font-display text-[10px] text-muted-foreground">
+                      Recommended for Etsy / print. Text is added on export — image is generated text-free.
+                    </span>
+                  </span>
+                </label>
+                <label className="flex items-start gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="poster-text-mode"
+                    checked={posterTextMode === "generated"}
+                    onChange={() => setPosterTextMode("generated")}
+                    className="mt-0.5"
+                  />
+                  <span className="flex flex-col">
+                    <span className="font-display text-xs text-foreground">Artistic text (generated in image)</span>
+                    <span className="font-display text-[10px] text-muted-foreground">
+                      Title / subtitle are sent to the generator and become part of the artwork.
+                    </span>
+                  </span>
+                </label>
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="font-display text-[11px] uppercase tracking-wider text-muted-foreground">
+                Poster text
+              </Label>
+              <input
+                type="text"
+                value={composerTitle}
+                onChange={(e) => setComposerTitle(e.target.value)}
+                placeholder="Title"
+                className="w-full bg-background border border-border rounded-sm px-2 py-1.5 font-display text-xs"
+              />
+              <input
+                type="text"
+                value={composerSubtitle}
+                onChange={(e) => setComposerSubtitle(e.target.value)}
+                placeholder="Subtitle"
+                className="w-full bg-background border border-border rounded-sm px-2 py-1.5 font-display text-xs"
+              />
+              <Textarea
+                value={composerDescription}
+                onChange={(e) => setComposerDescription(e.target.value)}
+                placeholder="Description"
+                rows={2}
+                className="font-display text-xs min-h-[60px]"
+              />
+              <Textarea
+                value={composerIngredientsRaw}
+                onChange={(e) => setComposerIngredientsRaw(e.target.value)}
+                placeholder="Ingredients (one per line)"
+                rows={2}
+                className="font-display text-xs min-h-[60px]"
+              />
+              {posterTextMode === "composer" && (composerTitle || composerSubtitle || composerDescription || composerIngredientsRaw) && (
+                <p className="font-display text-[10px] text-muted-foreground flex items-start gap-1">
+                  <Info className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                  Text will be added as a clean overlay — not generated inside the image.
+                </p>
+              )}
+              {posterTextMode === "generated" && (composerTitle || composerSubtitle) && (
+                <p className="font-display text-[10px] text-muted-foreground flex items-start gap-1">
+                  <Info className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                  Text will be generated inside the image. Overlay text will not be applied.
+                </p>
+              )}
+            </div>
+          </div>
+        </details>
+
         <Button
           onClick={generate}
           disabled={loading || (!isInlineEditing && !prompt.trim()) || (isInlineEditing && !editPrompt.trim())}
