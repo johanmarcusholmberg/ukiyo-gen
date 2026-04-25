@@ -346,6 +346,16 @@ export function usePosterComposer(init: UsePosterComposerInit) {
 
   const [state, setState] = useState<PosterState>(initial);
 
+  // Keep imageUrl in sync if the parent regenerates a new artwork while
+  // the composer is mounted. Text + layout + template are preserved.
+  const lastImageUrlRef = useRef(init.imageUrl);
+  useEffect(() => {
+    if (init.imageUrl && init.imageUrl !== lastImageUrlRef.current) {
+      lastImageUrlRef.current = init.imageUrl;
+      setState((s) => ({ ...s, imageUrl: init.imageUrl }));
+    }
+  }, [init.imageUrl]);
+
   const setTemplate = useCallback((id: PosterTemplateId) => {
     const tpl = getPosterTemplate(id);
     setState((s) => ({
