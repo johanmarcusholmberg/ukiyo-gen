@@ -119,13 +119,17 @@ export default function PosterComposer({
   const generatedNotice =
     state.textMode === "generated" && hasAnyText && !overlayInGenerated;
 
-  // Whether the in-preview overlay should be drawn. Composer mode draws
-  // when safe area is enabled. Generated mode only draws if the user
-  // explicitly opted into the duplicate-text overlay.
+  // STRICT render rule — text overlay is ONLY drawn for composer mode.
+  // Generated mode never paints overlay text in the preview, even if the
+  // user opts into the "also overlay text on export" toggle (we keep that
+  // for the export step only, to avoid double-rendering surprises here).
   const showPreviewOverlay =
-    state.layout.safeAreaEnabled &&
-    (state.textMode === "composer" ||
-      (state.textMode === "generated" && overlayInGenerated));
+    state.textMode === "composer" && state.layout.safeAreaEnabled;
+
+  // Single source of truth for the poster surface colour. Used for the
+  // outer frame, the safe-area band, and the export canvas so they always
+  // look identical.
+  const posterSurfaceBackground = resolvePosterSurfaceBackground(state);
 
   const handleExport = async () => {
     setExporting(true);
@@ -163,9 +167,7 @@ export default function PosterComposer({
     left: 0,
     right: 0,
     height: `${safeRatio * 100}%`,
-    background: showPreviewOverlay
-      ? state.layout.safeAreaBackground
-      : "rgba(255,255,255,0.35)",
+    background: posterSurfaceBackground,
     display: "flex",
     flexDirection: "column",
     justifyContent: "center",
@@ -176,7 +178,7 @@ export default function PosterComposer({
     pointerEvents: "none",
     [state.layout.safeAreaPosition === "bottom"
       ? "borderTop"
-      : "borderBottom"]: showPreviewOverlay ? "none" : "1px dashed #999",
+      : "borderBottom"]: showPreviewOverlay ? "none" : "1px dashed hsl(var(--border))",
     [state.layout.safeAreaPosition === "bottom" ? "bottom" : "top"]: 0,
   };
 
