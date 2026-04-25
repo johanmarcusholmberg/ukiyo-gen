@@ -1001,6 +1001,32 @@ export default function ImageGenerator({
                 className="font-display text-xs tracking-wider">
                 <Pencil className="mr-2 h-4 w-4" /> Edit Image
               </Button>
+              {/* Create Poster — opens an additive composer dialog. */}
+              <Dialog open={posterOpen} onOpenChange={setPosterOpen}>
+                <DialogTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="font-display text-xs tracking-wider border-primary/40 text-primary hover:bg-primary/10"
+                  >
+                    <LayoutPanelTop className="mr-2 h-4 w-4" /> Create Poster
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle className="font-display">Poster Composer</DialogTitle>
+                  </DialogHeader>
+                  <PosterComposer
+                    imageUrl={
+                      hasEnhanced && enhancedImageUrl
+                        ? enhancedImageUrl
+                        : imageUrl ?? ""
+                    }
+                    filenameBase={`${styleConfig.downloadPrefix}-${mode}`}
+                    printFormatId={selectedPrintFormat.id}
+                  />
+                </DialogContent>
+              </Dialog>
               {savedToGallery && (
                 <span className="text-xs text-primary flex items-center gap-1 font-display">✓ Saved to gallery</span>
               )}
