@@ -314,16 +314,29 @@ interface UsePosterComposerInit {
   templateId?: PosterTemplateId;
   /** Optional starting text mode — defaults to "composer". */
   textMode?: PosterTextMode;
+  /** Optional starting text content — overrides template defaults. */
+  initialText?: PosterTextContent;
   printFormatId?: string;
 }
 
 export function usePosterComposer(init: UsePosterComposerInit) {
   const initial: PosterState = useMemo(() => {
     const tpl = getPosterTemplate(init.templateId ?? "fika");
+    const hasInitialText =
+      init.initialText &&
+      (init.initialText.title ||
+        init.initialText.subtitle ||
+        init.initialText.description ||
+        (init.initialText.ingredients && init.initialText.ingredients.length > 0));
     return {
       templateId: tpl.id,
       textMode: init.textMode ?? "composer",
-      text: { ...tpl.defaultText },
+      // If caller passed text (e.g. user typed it in the generator), use
+      // it instead of the template's placeholder text. Otherwise fall
+      // back to the template defaults so the preview is never empty.
+      text: hasInitialText
+        ? { ...init.initialText }
+        : { ...tpl.defaultText },
       layout: { ...tpl.defaultLayout },
       imageUrl: init.imageUrl,
       printFormatId: init.printFormatId,
