@@ -290,19 +290,36 @@ export default function ImageGenerator({
       });
       // Optional poster-composer hint — additive only. Appended to the
       // user prompt so the existing prompt compiler is untouched.
-      const posterHint = reserveTextArea
-        ? buildPromptHint({
-            templateId: "fika",
-            textMode: "composer",
-            text: {},
-            layout: {
-              safeAreaEnabled: true,
-              safeAreaPosition: "bottom",
-              safeAreaHeightRatio: 0.3,
-            },
-            imageUrl: "",
-          })
-        : "";
+      //
+      // - composer mode: ask the model to leave a clean empty band so the
+      //   composer can lay text on top later. Composer text fields are NOT
+      //   sent to the generator.
+      // - generated mode: surface the requested title/subtitle to the
+      //   model so it bakes typography into the artwork.
+      const ingredientsList = composerIngredientsRaw
+        .split("\n")
+        .map((s) => s.trim())
+        .filter(Boolean);
+      const hasComposerText =
+        !!composerTitle.trim() ||
+        !!composerSubtitle.trim() ||
+        !!composerDescription.trim() ||
+        ingredientsList.length > 0;
+      let posterHint = "";
+      if (posterTextMode === "composer") {
+        // Always reserve a clean band when composer mode is active so the
+        // model produces poster-friendly artwork even if the user hasn't
+        // typed any text yet.
+        posterHint =
+          "Leave clean empty space at the bottom of the image for later text layout, with minimal details in that area.";
+      } else if (posterTextMode === "generated" && hasComposerText) {
+        const parts: string[] = [];
+        if (composerTitle.trim()) parts.push(`title "${composerTitle.trim()}"`);
+        if (composerSubtitle.trim()) parts.push(`subtitle "${composerSubtitle.trim()}"`);
+        if (parts.length > 0) {
+          posterHint = `Include the following text inside the image as integrated typography: ${parts.join(", ")}.`;
+        }
+      }
       const promptForGen = posterHint
         ? `${activePrompt.trim()} ${posterHint}`
         : activePrompt.trim();
