@@ -905,6 +905,30 @@ export default function ImageGenerator({
                 </label>
               </div>
             </div>
+            {/* Safe text area — strictly OFF by default. Only when this is
+                ON *and* text is entered does the generator receive a
+                "leave clean empty space" hint. Composer mode without this
+                toggle generates a full-bleed image. */}
+            {posterTextMode === "composer" && (
+              <div className="flex items-start gap-2 rounded-sm border border-border bg-card/40 px-2 py-1.5">
+                <Switch
+                  checked={posterSafeAreaEnabled}
+                  onCheckedChange={setPosterSafeAreaEnabled}
+                />
+                <div className="flex flex-col">
+                  <span className="font-display text-xs text-foreground">
+                    Safe text area (for poster layout)
+                  </span>
+                  <span className="font-display text-[10px] text-muted-foreground">
+                    {posterSafeAreaEnabled
+                      ? (composerTitle || composerSubtitle || composerDescription || composerIngredientsRaw
+                          ? "Generator will leave a clean empty band at the bottom for text."
+                          : "Enabled, but no poster text yet — generation is unaffected until text is added.")
+                      : "Off — image uses the full canvas. Toggle on to reserve a band for typography."}
+                  </span>
+                </div>
+              </div>
+            )}
             <div className="space-y-1.5">
               <Label className="font-display text-[11px] uppercase tracking-wider text-muted-foreground">
                 Poster text
