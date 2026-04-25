@@ -428,15 +428,26 @@ export default function PosterComposer({
               </div>
               <div className="space-y-1">
                 <Label className="font-display text-[10px] uppercase tracking-wider text-muted-foreground">
-                  Band background
+                  Poster background
                 </Label>
                 <Input
                   type="color"
-                  value={state.layout.safeAreaBackground ?? "#ffffff"}
-                  onChange={(e) => setLayout({ safeAreaBackground: e.target.value })}
+                  value={posterSurfaceBackground}
+                  onChange={(e) => setLayout({ backgroundColor: e.target.value })}
                   className="h-8 w-full p-1"
                 />
+                <p className="font-display text-[10px] text-muted-foreground">
+                  Applied to the full poster surface — frame, margins, and safe area.
+                </p>
               </div>
+              {state.layout.safeAreaEnabled && !hasAnyText && (
+                <div className="flex items-start gap-1.5 text-[10px] font-display border rounded-sm px-1.5 py-1 bg-muted/50 border-border text-muted-foreground">
+                  <Info className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                  <span>
+                    Safe text area is enabled, but no poster text is entered. It will not affect generation until text is added.
+                  </span>
+                </div>
+              )}
             </div>
           )}
         </div>
