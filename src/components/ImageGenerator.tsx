@@ -833,7 +833,7 @@ export default function ImageGenerator({
             opens auto-filled with these values.
             Generation logic is NOT changed — composer text is only sent
             to the model when textMode === "generated". */}
-        <Import will be added below — see Poster setup details block. */}
+        {/* Composer details below. */}
         <details className="rounded-sm border border-border bg-card/40 group">
           <summary className="cursor-pointer select-none px-3 py-2 flex items-center gap-2 font-display text-xs">
             <LayoutPanelTop className="h-3.5 w-3.5 text-primary" />
