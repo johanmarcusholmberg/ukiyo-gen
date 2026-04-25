@@ -144,11 +144,33 @@ export default function ImageGenerator({
   const [lastRoutingReason, setLastRoutingReason] = useState<string | null>(null);
   const [compareOpen, setCompareOpen] = useState(false);
   // Poster Composer integration (additive — does not change the generator).
-  // When ON, we append a layout hint to the user prompt asking the model to
-  // leave a clean empty band at the bottom for later text overlay. The
-  // composer dialog opens after generation via the "Create Poster" button.
-  const [reserveTextArea, setReserveTextArea] = useState(false);
+  // The user can configure template + text BEFORE generation. After the
+  // image is produced we auto-open the Poster Composer pre-filled with
+  // their inputs so the poster is ready to export immediately.
+  //
+  // Two text modes drive how we use the user-entered text:
+  //   - "composer" (default): text is NOT sent to the generator. We only
+  //                            ask the model to leave a clean empty band.
+  //   - "generated":          title/subtitle ARE injected into the prompt
+  //                            so the model bakes typography into the art.
+  const [posterTemplateId, setPosterTemplateId] = useState<PosterTemplateId>("fika");
+  const [posterTextMode, setPosterTextMode] = useState<PosterTextMode>("composer");
+  const [composerTitle, setComposerTitle] = useState("");
+  const [composerSubtitle, setComposerSubtitle] = useState("");
+  const [composerDescription, setComposerDescription] = useState("");
+  const [composerIngredientsRaw, setComposerIngredientsRaw] = useState("");
   const [posterOpen, setPosterOpen] = useState(false);
+  // Snapshot of poster config used for the most recent generation. We
+  // pass this (not the live form values) into PosterComposer so the
+  // dialog stays consistent if the user edits inputs after generating.
+  const [lastPosterSnapshot, setLastPosterSnapshot] = useState<{
+    templateId: PosterTemplateId;
+    textMode: PosterTextMode;
+    title: string;
+    subtitle: string;
+    description: string;
+    ingredients: string[];
+  } | null>(null);
   const { toast } = useToast();
 
   // Shared upscale hook
