@@ -1,6 +1,16 @@
 import { useState, useRef, useMemo } from "react";
 import { usePersistedGeneration } from "@/hooks/use-persisted-generation";
-import { Loader2, Download, Sparkles, Save, Replace, X, Trash2, Pencil, Printer, FileImage, ArrowUpCircle, ThumbsUp, ThumbsDown, Layers, AlertTriangle } from "lucide-react";
+import { Loader2, Download, Sparkles, Save, Replace, X, Trash2, Pencil, Printer, FileImage, ArrowUpCircle, ThumbsUp, ThumbsDown, Layers, AlertTriangle, LayoutPanelTop } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Switch } from "@/components/ui/switch";
+import PosterComposer from "@/features/poster-composer/PosterComposer";
+import { buildPromptHint } from "@/features/poster-composer/usePosterComposer";
 import EnhanceForPrintDialog from "@/components/EnhanceForPrintDialog";
 import AssetStatusBadges from "@/components/AssetStatusBadges";
 import { describeExportSource } from "@/lib/asset-selection";
@@ -132,6 +142,12 @@ export default function ImageGenerator({
   const [lastExecutionRoute, setLastExecutionRoute] = useState<string | null>(null);
   const [lastRoutingReason, setLastRoutingReason] = useState<string | null>(null);
   const [compareOpen, setCompareOpen] = useState(false);
+  // Poster Composer integration (additive — does not change the generator).
+  // When ON, we append a layout hint to the user prompt asking the model to
+  // leave a clean empty band at the bottom for later text overlay. The
+  // composer dialog opens after generation via the "Create Poster" button.
+  const [reserveTextArea, setReserveTextArea] = useState(false);
+  const [posterOpen, setPosterOpen] = useState(false);
   const { toast } = useToast();
 
   // Shared upscale hook
@@ -249,8 +265,26 @@ export default function ImageGenerator({
         styleKey: styleConfig.styleKey,
         provider: strictnessProvider,
       });
+      // Optional poster-composer hint — additive only. Appended to the
+      // user prompt so the existing prompt compiler is untouched.
+      const posterHint = reserveTextArea
+        ? buildPromptHint({
+            templateId: "fika",
+            textMode: "composer",
+            text: {},
+            layout: {
+              safeAreaEnabled: true,
+              safeAreaPosition: "bottom",
+              safeAreaHeightRatio: 0.3,
+            },
+            imageUrl: "",
+          })
+        : "";
+      const promptForGen = posterHint
+        ? `${activePrompt.trim()} ${posterHint}`
+        : activePrompt.trim();
       const { response: gen, diagnostics } = await generateImage({
-        prompt: activePrompt.trim(),
+        prompt: promptForGen,
         styleKey: styleConfig.styleKey,
         aspectRatio: effectiveAspectRatio,
         backgroundStyle,
@@ -676,6 +710,25 @@ export default function ImageGenerator({
               <Layers className="h-3 w-3 mr-1" />
               {compareOpen ? "Hide compare" : "Compare providers"}
             </Button>
+            {/* Poster Composer hint — appended to the user prompt only when ON.
+                Does not change the prompt compiler or generator. */}
+            <label
+              className={cn(
+                "inline-flex items-center gap-1.5 px-2 py-1 rounded-sm border text-[11px] font-display cursor-pointer select-none",
+                reserveTextArea
+                  ? "border-primary/40 bg-primary/5 text-primary"
+                  : "border-border text-muted-foreground hover:bg-muted/40",
+              )}
+              title="Asks the model to leave a clean empty band at the bottom for later text overlay in the Poster Composer"
+            >
+              <LayoutPanelTop className="h-3 w-3" />
+              Reserve text area
+              <Switch
+                checked={reserveTextArea}
+                onCheckedChange={setReserveTextArea}
+                className="ml-1 scale-75"
+              />
+            </label>
           </div>
           {lastProviderUsed && (
             <RouteBadge
@@ -948,6 +1001,32 @@ export default function ImageGenerator({
                 className="font-display text-xs tracking-wider">
                 <Pencil className="mr-2 h-4 w-4" /> Edit Image
               </Button>
+              {/* Create Poster — opens an additive composer dialog. */}
+              <Dialog open={posterOpen} onOpenChange={setPosterOpen}>
+                <DialogTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="font-display text-xs tracking-wider border-primary/40 text-primary hover:bg-primary/10"
+                  >
+                    <LayoutPanelTop className="mr-2 h-4 w-4" /> Create Poster
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle className="font-display">Poster Composer</DialogTitle>
+                  </DialogHeader>
+                  <PosterComposer
+                    imageUrl={
+                      hasEnhanced && enhancedImageUrl
+                        ? enhancedImageUrl
+                        : imageUrl ?? ""
+                    }
+                    filenameBase={`${styleConfig.downloadPrefix}-${mode}`}
+                    printFormatId={selectedPrintFormat.id}
+                  />
+                </DialogContent>
+              </Dialog>
               {savedToGallery && (
                 <span className="text-xs text-primary flex items-center gap-1 font-display">✓ Saved to gallery</span>
               )}
