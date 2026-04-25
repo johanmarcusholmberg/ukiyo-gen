@@ -294,11 +294,13 @@ export default function ImageGenerator({
       // Optional poster-composer hint — additive only. Appended to the
       // user prompt so the existing prompt compiler is untouched.
       //
-      // - composer mode: ask the model to leave a clean empty band so the
-      //   composer can lay text on top later. Composer text fields are NOT
-      //   sent to the generator.
-      // - generated mode: surface the requested title/subtitle to the
-      //   model so it bakes typography into the artwork.
+      // STRICT rules (must match Poster Composer behaviour):
+      //   - composer mode: only emit a "leave clean empty space" hint when
+      //     the user has BOTH enabled the safe area AND entered some text.
+      //     Composer text fields are NEVER sent to the generator.
+      //   - generated mode: only emit "include this text" when the user
+      //     typed a title/subtitle. Safe area is irrelevant here.
+      //   - otherwise: no hint, no layout reservation, full artwork.
       const ingredientsList = composerIngredientsRaw
         .split("\n")
         .map((s) => s.trim())
@@ -308,11 +310,12 @@ export default function ImageGenerator({
         !!composerSubtitle.trim() ||
         !!composerDescription.trim() ||
         ingredientsList.length > 0;
+      const shouldReserveTextArea =
+        posterTextMode === "composer" &&
+        posterSafeAreaEnabled &&
+        hasComposerText;
       let posterHint = "";
-      if (posterTextMode === "composer") {
-        // Always reserve a clean band when composer mode is active so the
-        // model produces poster-friendly artwork even if the user hasn't
-        // typed any text yet.
+      if (shouldReserveTextArea) {
         posterHint =
           "Leave clean empty space at the bottom of the image for later text layout, with minimal details in that area.";
       } else if (posterTextMode === "generated" && hasComposerText) {
