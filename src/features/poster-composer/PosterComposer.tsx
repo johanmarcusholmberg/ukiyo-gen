@@ -37,6 +37,7 @@ import { POSTER_TEMPLATE_LIST, getPosterTemplate } from "./poster-templates";
 import type {
   PosterTemplateId,
   PosterTextMode,
+  PosterTextContent,
 } from "./poster-types";
 
 interface PosterComposerProps {
@@ -45,12 +46,32 @@ interface PosterComposerProps {
   filenameBase?: string;
   /** Optional default print format id. */
   printFormatId?: string;
+  /** Optional starting template (e.g. picked in the generator UI). */
+  initialTemplateId?: PosterTemplateId;
+  /** Optional starting text mode. Defaults to "composer". */
+  initialTextMode?: PosterTextMode;
+  /** Optional starting text content (e.g. typed in the generator UI). */
+  initialText?: PosterTextContent;
+  /**
+   * Optional regenerate callback — when provided, a "Regenerate image"
+   * button is shown in the composer. The composer keeps all text + layout
+   * state; only the imageUrl prop is expected to change after the
+   * callback resolves.
+   */
+  onRegenerate?: () => Promise<void> | void;
+  /** External "currently regenerating" flag from the parent. */
+  isRegenerating?: boolean;
 }
 
 export default function PosterComposer({
   imageUrl,
   filenameBase = "poster",
   printFormatId = DEFAULT_PRINT_FORMAT_ID,
+  initialTemplateId,
+  initialTextMode,
+  initialText,
+  onRegenerate,
+  isRegenerating = false,
 }: PosterComposerProps) {
   const { toast } = useToast();
   const {
@@ -59,7 +80,13 @@ export default function PosterComposer({
     setTextMode,
     setText,
     setLayout,
-  } = usePosterComposer({ imageUrl, printFormatId });
+  } = usePosterComposer({
+    imageUrl,
+    printFormatId,
+    templateId: initialTemplateId,
+    textMode: initialTextMode,
+    initialText,
+  });
 
   const [exporting, setExporting] = useState(false);
   const [overlayInGenerated, setOverlayInGenerated] = useState(false);
