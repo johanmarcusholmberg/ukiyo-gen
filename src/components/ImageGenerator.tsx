@@ -265,8 +265,26 @@ export default function ImageGenerator({
         styleKey: styleConfig.styleKey,
         provider: strictnessProvider,
       });
+      // Optional poster-composer hint — additive only. Appended to the
+      // user prompt so the existing prompt compiler is untouched.
+      const posterHint = reserveTextArea
+        ? buildPromptHint({
+            templateId: "fika",
+            textMode: "composer",
+            text: {},
+            layout: {
+              safeAreaEnabled: true,
+              safeAreaPosition: "bottom",
+              safeAreaHeightRatio: 0.3,
+            },
+            imageUrl: "",
+          })
+        : "";
+      const promptForGen = posterHint
+        ? `${activePrompt.trim()} ${posterHint}`
+        : activePrompt.trim();
       const { response: gen, diagnostics } = await generateImage({
-        prompt: activePrompt.trim(),
+        prompt: promptForGen,
         styleKey: styleConfig.styleKey,
         aspectRatio: effectiveAspectRatio,
         backgroundStyle,
