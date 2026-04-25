@@ -28,6 +28,26 @@ import type {
   PosterTextMode,
 } from "./poster-types";
 
+// ── Surface background (single source of truth) ──────────────────────────
+
+const FALLBACK_POSTER_BACKGROUND = "#f5efe4";
+
+/**
+ * Resolve THE poster surface colour — used for the outer frame, margins,
+ * the safe-area band, and the export canvas. Order of precedence:
+ *   1. `state.layout.backgroundColor` (user-edited)
+ *   2. `state.layout.safeAreaBackground` (legacy field)
+ *   3. template default `defaultLayout.backgroundColor`
+ *   4. global fallback
+ */
+export function resolvePosterSurfaceBackground(state: PosterState): string {
+  const layout = state.layout;
+  if (layout.backgroundColor) return layout.backgroundColor;
+  if (layout.safeAreaBackground) return layout.safeAreaBackground;
+  const tpl = getPosterTemplate(state.templateId);
+  return tpl.defaultLayout.backgroundColor ?? FALLBACK_POSTER_BACKGROUND;
+}
+
 // ── Geometry ─────────────────────────────────────────────────────────────
 
 export interface SafeAreaRect {
