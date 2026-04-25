@@ -66,13 +66,38 @@ export default function PosterComposer({
 
   const tpl = useMemo(() => getPosterTemplate(state.templateId), [state.templateId]);
 
-  // Warn if the user has both "generated text in image" AND an overlay
-  // active — that produces duplicate text on export.
+  const hasAnyText = !!(
+    state.text.title ||
+    state.text.subtitle ||
+    state.text.description ||
+    (state.text.ingredients && state.text.ingredients.length > 0)
+  );
+
+  // Guardrail 1 — Both modes producing text simultaneously.
   const duplicateRisk =
     state.textMode === "generated" &&
     state.layout.safeAreaEnabled &&
     overlayInGenerated &&
-    !!(state.text.title || state.text.subtitle || state.text.description);
+    hasAnyText;
+
+  // Guardrail 2 — Composer mode but safe area disabled and text entered:
+  //               text would overlap the artwork.
+  const overlapRisk =
+    state.textMode === "composer" && !state.layout.safeAreaEnabled && hasAnyText;
+
+  // Guardrail 3 — Generated mode: composer overlay text is hidden by
+  //               default, so let the user know their text fields drive
+  //               the prompt, not an overlay.
+  const generatedNotice =
+    state.textMode === "generated" && hasAnyText && !overlayInGenerated;
+
+  // Whether the in-preview overlay should be drawn. Composer mode draws
+  // when safe area is enabled. Generated mode only draws if the user
+  // explicitly opted into the duplicate-text overlay.
+  const showPreviewOverlay =
+    state.layout.safeAreaEnabled &&
+    (state.textMode === "composer" ||
+      (state.textMode === "generated" && overlayInGenerated));
 
   const handleExport = async () => {
     setExporting(true);
@@ -110,7 +135,9 @@ export default function PosterComposer({
     left: 0,
     right: 0,
     height: `${safeRatio * 100}%`,
-    background: state.layout.safeAreaBackground,
+    background: showPreviewOverlay
+      ? state.layout.safeAreaBackground
+      : "rgba(255,255,255,0.35)",
     display: "flex",
     flexDirection: "column",
     justifyContent: "center",
@@ -118,6 +145,10 @@ export default function PosterComposer({
     color: tpl.typography.titleColor,
     fontFamily: tpl.typography.bodyFontFamily,
     textAlign: tpl.typography.align,
+    pointerEvents: "none",
+    [state.layout.safeAreaPosition === "bottom"
+      ? "borderTop"
+      : "borderBottom"]: showPreviewOverlay ? "none" : "1px dashed #999",
     [state.layout.safeAreaPosition === "bottom" ? "bottom" : "top"]: 0,
   };
 
@@ -142,7 +173,7 @@ export default function PosterComposer({
             />
             {state.layout.safeAreaEnabled && (
               <div style={safeAreaCss}>
-                {state.text.title && (
+                {showPreviewOverlay && state.text.title && (
                   <div
                     style={{
                       fontFamily: tpl.typography.titleFontFamily,
@@ -157,7 +188,7 @@ export default function PosterComposer({
                     {state.text.title}
                   </div>
                 )}
-                {state.text.subtitle && (
+                {showPreviewOverlay && state.text.subtitle && (
                   <div
                     style={{
                       marginTop: "4%",
@@ -168,7 +199,7 @@ export default function PosterComposer({
                     {state.text.subtitle}
                   </div>
                 )}
-                {state.text.description && (
+                {showPreviewOverlay && state.text.description && (
                   <div
                     style={{
                       marginTop: "3%",
@@ -180,18 +211,34 @@ export default function PosterComposer({
                     {state.text.description}
                   </div>
                 )}
-                {state.text.ingredients && state.text.ingredients.length > 0 && (
-                  <div
+                {showPreviewOverlay &&
+                  state.text.ingredients &&
+                  state.text.ingredients.length > 0 && (
+                    <div
+                      style={{
+                        marginTop: "auto",
+                        paddingTop: "3%",
+                        fontSize: `clamp(9px, ${tpl.typography.bodySize / 22}vw, ${tpl.typography.bodySize}px)`,
+                        color: tpl.typography.bodyColor,
+                        letterSpacing: "0.05em",
+                      }}
+                    >
+                      {state.text.ingredients.join("  ·  ")}
+                    </div>
+                  )}
+                {!showPreviewOverlay && (
+                  <span
                     style={{
-                      marginTop: "auto",
-                      paddingTop: "3%",
-                      fontSize: `clamp(9px, ${tpl.typography.bodySize / 22}vw, ${tpl.typography.bodySize}px)`,
-                      color: tpl.typography.bodyColor,
-                      letterSpacing: "0.05em",
+                      fontSize: 10,
+                      color: "#666",
+                      letterSpacing: "0.1em",
+                      textTransform: "uppercase",
+                      textAlign: "center",
+                      width: "100%",
                     }}
                   >
-                    {state.text.ingredients.join("  ·  ")}
-                  </div>
+                    Safe text area
+                  </span>
                 )}
               </div>
             )}
@@ -273,12 +320,33 @@ export default function PosterComposer({
               </span>
             </div>
           )}
+          {generatedNotice && (
+            <div className="flex items-start gap-1.5 text-[10px] font-display border rounded-sm px-1.5 py-1 bg-muted/50 border-border text-muted-foreground">
+              <Info className="h-3 w-3 mt-0.5 flex-shrink-0" />
+              <span>
+                Text will be generated inside the image. Overlay text will not be applied.
+              </span>
+            </div>
+          )}
+          {overlapRisk && (
+            <div className="flex items-start gap-1.5 text-[10px] font-display border rounded-sm px-1.5 py-1 bg-amber-500/10 border-amber-500/30 text-amber-600">
+              <AlertTriangle className="h-3 w-3 mt-0.5 flex-shrink-0" />
+              <span>
+                Text may overlap the image. Consider enabling Safe text area below.
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Safe area */}
         <div className="space-y-1.5 border border-border rounded-md p-2">
           <div className="flex items-center justify-between">
-            <Label className="font-display text-xs">Safe text area</Label>
+            <div className="space-y-0.5">
+              <Label className="font-display text-xs">Safe text area</Label>
+              <p className="font-display text-[10px] text-muted-foreground">
+                For poster layout — reserves a clean band for typography.
+              </p>
+            </div>
             <Switch
               checked={state.layout.safeAreaEnabled}
               onCheckedChange={(v) => setLayout({ safeAreaEnabled: v })}
