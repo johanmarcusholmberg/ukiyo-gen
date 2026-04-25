@@ -259,12 +259,16 @@ export async function exportPoster(
   const format = getPrintFormat(printFormatId);
   if (!format) throw new Error(`Unknown print format: ${printFormatId}`);
 
+  const surfaceColor = resolvePosterSurfaceBackground(state);
+
   // 1. Reuse existing print export to get the high-res normalized artwork.
+  //    The surface colour is also used as pad colour so any letterboxing
+  //    matches the poster background visually.
   const base = await preparePrintExport({
     imageUrl: state.imageUrl,
     printFormatId,
     ratioMethod: "pad",
-    padColor: state.layout.safeAreaBackground ?? "#ffffff",
+    padColor: surfaceColor,
     mimeType: "image/png",
   });
 
