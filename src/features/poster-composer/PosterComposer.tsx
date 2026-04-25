@@ -66,13 +66,38 @@ export default function PosterComposer({
 
   const tpl = useMemo(() => getPosterTemplate(state.templateId), [state.templateId]);
 
-  // Warn if the user has both "generated text in image" AND an overlay
-  // active — that produces duplicate text on export.
+  const hasAnyText = !!(
+    state.text.title ||
+    state.text.subtitle ||
+    state.text.description ||
+    (state.text.ingredients && state.text.ingredients.length > 0)
+  );
+
+  // Guardrail 1 — Both modes producing text simultaneously.
   const duplicateRisk =
     state.textMode === "generated" &&
     state.layout.safeAreaEnabled &&
     overlayInGenerated &&
-    !!(state.text.title || state.text.subtitle || state.text.description);
+    hasAnyText;
+
+  // Guardrail 2 — Composer mode but safe area disabled and text entered:
+  //               text would overlap the artwork.
+  const overlapRisk =
+    state.textMode === "composer" && !state.layout.safeAreaEnabled && hasAnyText;
+
+  // Guardrail 3 — Generated mode: composer overlay text is hidden by
+  //               default, so let the user know their text fields drive
+  //               the prompt, not an overlay.
+  const generatedNotice =
+    state.textMode === "generated" && hasAnyText && !overlayInGenerated;
+
+  // Whether the in-preview overlay should be drawn. Composer mode draws
+  // when safe area is enabled. Generated mode only draws if the user
+  // explicitly opted into the duplicate-text overlay.
+  const showPreviewOverlay =
+    state.layout.safeAreaEnabled &&
+    (state.textMode === "composer" ||
+      (state.textMode === "generated" && overlayInGenerated));
 
   const handleExport = async () => {
     setExporting(true);
