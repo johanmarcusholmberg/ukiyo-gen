@@ -771,6 +771,7 @@ export function compilePromptForSDXL(
     ? `style reconfirm: ${displayNameToken}, ${mediumTokens.join(", ")}, 2D illustrated, not photo, not 3D`
     : "";
 
+  const strictSuffix = styleStrictSuffix(styleKey);
   const prompt = [
     head,
     composition,
@@ -779,6 +780,7 @@ export function compilePromptForSDXL(
     `style lock: ${styleLock}`,
     reconfirm,
     tailAnchors,
+    strictSuffix,
   ]
     .filter(Boolean)
     .join(", ");
