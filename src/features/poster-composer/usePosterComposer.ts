@@ -440,7 +440,8 @@ export async function exportPoster(
   if (rect) {
     // Reference for typography sizes is a 1000px-tall poster; scale up.
     const scale = base.height / 1000;
-    drawTextOverlay({ ctx, state, rect, scale });
+    const spaceScale = base.height / 1000;
+    drawTextOverlay({ ctx, state, rect, scale, spaceScale });
   }
 
   const mime = opts.mimeType ?? "image/png";
