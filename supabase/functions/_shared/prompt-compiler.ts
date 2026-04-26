@@ -618,6 +618,7 @@ export function compilePrompt(
       "",
       options.aspectRatio ? `The image must have a ${options.aspectRatio} aspect ratio.` : "",
       buildArtworkBgText(options.backgroundStyle),
+      styleStrictSuffix(styleKey),
       "Generate at maximum native resolution. Output the highest fidelity image possible.",
     ];
     return sections.filter(Boolean).join("\n");
