@@ -119,93 +119,237 @@ interface OverlayRenderOptions {
   ctx: CanvasRenderingContext2D;
   state: PosterState;
   rect: SafeAreaRect;
-  scale: number; // multiplier vs. the 1000px reference height in templates
+  /** Multiplier vs. the 1000px reference used by legacy size fields. */
+  scale: number;
+  /** Multiplier vs. the 1000px reference for spacing (gap/padding). */
+  spaceScale: number;
+  /** Optional outparam — set to true if text was shrunk or overflowed. */
+  onOverflow?: (info: { shrunk: boolean; overflowed: boolean }) => void;
 }
 
-function drawTextOverlay({ ctx, state, rect, scale }: OverlayRenderOptions) {
+interface BlockMetrics {
+  font: string;
+  text: string;
+  color: string;
+  letterSpacing: string;
+  sizePx: number;
+  lineHeight: number;
+  maxWidth: number;
+  lines: string[];
+  height: number;
+}
+
+function resolveSize(
+  ratio: number | undefined,
+  legacyPx: number,
+  shortEdge: number,
+  scale: number,
+  shrink: number,
+): number {
+  const base = ratio ? ratio * shortEdge : legacyPx * scale;
+  return Math.max(8, Math.round(base * shrink));
+}
+
+function buildBlock(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  font: string,
+  color: string,
+  letterSpacing: string,
+  sizePx: number,
+  lineHeight: number,
+  maxWidth: number,
+): BlockMetrics {
+  ctx.font = font;
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (ctx as any).letterSpacing = letterSpacing;
+  } catch { /* noop */ }
+  const lines = wrapLines(ctx, text, maxWidth);
+  return {
+    font,
+    text,
+    color,
+    letterSpacing,
+    sizePx,
+    lineHeight,
+    maxWidth,
+    lines,
+    height: lines.length * sizePx * lineHeight,
+  };
+}
+
+function drawTextOverlay({
+  ctx,
+  state,
+  rect,
+  scale,
+  spaceScale,
+  onOverflow,
+}: OverlayRenderOptions) {
   const tpl = getPosterTemplate(state.templateId);
   const t = tpl.typography;
+  const surface = resolvePosterSurfaceBackground(state);
 
   // Background band — uses the unified poster surface colour so the band
   // is visually identical to the outer frame / margins.
-  ctx.fillStyle = resolvePosterSurfaceBackground(state);
+  ctx.fillStyle = surface;
   ctx.fillRect(rect.x, rect.y, rect.width, rect.height);
 
-  const padX = Math.round(rect.width * 0.06);
-  const padY = Math.round(rect.height * 0.12);
-  const innerLeft = rect.x + padX;
-  const innerRight = rect.x + rect.width - padX;
+  // Subtle gradient fade between artwork and text area (8–12px).
+  const fadePx = Math.max(8, Math.min(12, Math.round(rect.height * 0.04)));
+  const isBottom = state.layout.safeAreaPosition === "bottom";
+  const gradient = isBottom
+    ? ctx.createLinearGradient(0, rect.y - fadePx, 0, rect.y + fadePx)
+    : ctx.createLinearGradient(0, rect.y + rect.height - fadePx, 0, rect.y + rect.height + fadePx);
+  // Same colour as the surface, fading from transparent to opaque so the
+  // image edge is gently softened.
+  gradient.addColorStop(0, hexToRgba(surface, 0));
+  gradient.addColorStop(1, surface);
+  ctx.fillStyle = gradient;
+  if (isBottom) {
+    ctx.fillRect(rect.x, rect.y - fadePx, rect.width, fadePx * 2);
+  } else {
+    ctx.fillRect(rect.x, rect.y + rect.height - fadePx, rect.width, fadePx * 2);
+  }
+
+  // Reset to surface for any further fills inside the band.
+  const padding = Math.max(8, Math.round(t.blockPadding * spaceScale));
+  const gap = Math.max(4, Math.round(t.blockGap * spaceScale));
+  const innerLeft = rect.x + padding;
+  const innerRight = rect.x + rect.width - padding;
   const innerWidth = innerRight - innerLeft;
+  const innerTop = rect.y + padding;
+  const innerBottom = rect.y + rect.height - padding;
+  const innerHeight = innerBottom - innerTop;
   const align = t.align;
-
-  let cursorY = rect.y + padY;
-  ctx.textBaseline = "top";
-  ctx.textAlign = align;
-
   const xForAlign =
     align === "left" ? innerLeft : align === "right" ? innerRight : (innerLeft + innerRight) / 2;
 
-  // Title
-  if (state.text.title) {
-    const sizePx = Math.max(12, Math.round(t.titleSize * scale));
-    ctx.font = `700 ${sizePx}px ${t.titleFontFamily}`;
-    ctx.fillStyle = t.titleColor;
-    const text = t.titleUppercase ? state.text.title.toUpperCase() : state.text.title;
-    // Letter-spacing fallback: canvas has no native letter-spacing, but
-    // most browsers honour the canvas2d `letterSpacing` property nowadays.
-    // Use it when available; ignore otherwise.
+  const shortEdge = Math.min(rect.width, Math.round(rect.height / Math.max(0.01, state.layout.safeAreaHeightRatio)));
+
+  // Try rendering at full size, shrinking up to 25% if overflowing.
+  let shrunk = false;
+  let overflowed = false;
+  let blocks: BlockMetrics[] = [];
+  let totalHeight = 0;
+
+  for (let attempt = 0; attempt < 6; attempt++) {
+    const shrink = 1 - attempt * 0.05; // 1.00 → 0.75
+    blocks = [];
+    totalHeight = 0;
+
+    if (state.text.title) {
+      const sizePx = resolveSize(t.titleSizeRatio, t.titleSize, shortEdge, scale, shrink);
+      const text = t.titleUppercase ? state.text.title.toUpperCase() : state.text.title;
+      const block = buildBlock(
+        ctx,
+        text,
+        `700 ${sizePx}px ${t.titleFontFamily}`,
+        t.titleColor,
+        t.titleLetterSpacing,
+        sizePx,
+        t.titleLineHeight,
+        innerWidth * t.titleMaxWidthRatio,
+      );
+      blocks.push(block);
+      totalHeight += block.height;
+    }
+    if (state.text.subtitle) {
+      const sizePx = resolveSize(t.subtitleSizeRatio, t.subtitleSize, shortEdge, scale, shrink);
+      const block = buildBlock(
+        ctx,
+        state.text.subtitle,
+        `400 ${sizePx}px ${t.bodyFontFamily}`,
+        t.bodyColor,
+        t.subtitleLetterSpacing,
+        sizePx,
+        t.subtitleLineHeight,
+        innerWidth * t.subtitleMaxWidthRatio,
+      );
+      blocks.push(block);
+      totalHeight += block.height;
+    }
+    if (state.text.description) {
+      const sizePx = resolveSize(t.descriptionSizeRatio, t.bodySize, shortEdge, scale, shrink);
+      const block = buildBlock(
+        ctx,
+        state.text.description,
+        `400 ${sizePx}px ${t.bodyFontFamily}`,
+        t.bodyColor,
+        t.descriptionLetterSpacing,
+        sizePx,
+        t.descriptionLineHeight,
+        innerWidth * t.descriptionMaxWidthRatio,
+      );
+      blocks.push(block);
+      totalHeight += block.height;
+    }
+
+    const ingredientsBlock = (() => {
+      if (!state.text.ingredients || state.text.ingredients.length === 0) return null;
+      const sizePx = resolveSize(t.descriptionSizeRatio, t.bodySize, shortEdge, scale, shrink);
+      return buildBlock(
+        ctx,
+        state.text.ingredients.join("  ·  "),
+        `400 ${sizePx}px ${t.bodyFontFamily}`,
+        t.bodyColor,
+        t.descriptionLetterSpacing,
+        sizePx,
+        t.descriptionLineHeight,
+        innerWidth * t.descriptionMaxWidthRatio,
+      );
+    })();
+    if (ingredientsBlock) {
+      blocks.push(ingredientsBlock);
+      totalHeight += ingredientsBlock.height;
+    }
+
+    const totalWithGaps = totalHeight + gap * Math.max(0, blocks.length - 1);
+    if (totalWithGaps <= innerHeight) {
+      if (attempt > 0) shrunk = true;
+      break;
+    }
+    if (attempt === 5) overflowed = true;
+  }
+
+  // Vertically center the stack inside the band.
+  const totalWithGaps =
+    blocks.reduce((sum, b) => sum + b.height, 0) + gap * Math.max(0, blocks.length - 1);
+  let cursorY = innerTop + Math.max(0, (innerHeight - totalWithGaps) / 2);
+
+  ctx.textBaseline = "top";
+  ctx.textAlign = align;
+
+  for (let i = 0; i < blocks.length; i++) {
+    const b = blocks[i];
+    ctx.font = b.font;
+    ctx.fillStyle = b.color;
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (ctx as any).letterSpacing = t.titleLetterSpacing;
+      (ctx as any).letterSpacing = b.letterSpacing;
     } catch { /* noop */ }
-    wrapAndDrawText(ctx, text, xForAlign, cursorY, innerWidth, sizePx * 1.1);
-    const lines = countWrappedLines(ctx, text, innerWidth);
-    cursorY += lines * sizePx * 1.1 + sizePx * 0.25;
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (ctx as any).letterSpacing = "0";
-    } catch { /* noop */ }
+    b.lines.forEach((line, idx) => {
+      ctx.fillText(line, xForAlign, cursorY + idx * b.sizePx * b.lineHeight);
+    });
+    cursorY += b.height + gap;
   }
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (ctx as any).letterSpacing = "0";
+  } catch { /* noop */ }
 
-  // Subtitle
-  if (state.text.subtitle) {
-    const sizePx = Math.max(10, Math.round(t.subtitleSize * scale));
-    ctx.font = `400 ${sizePx}px ${t.bodyFontFamily}`;
-    ctx.fillStyle = t.bodyColor;
-    wrapAndDrawText(ctx, state.text.subtitle, xForAlign, cursorY, innerWidth, sizePx * 1.3);
-    const lines = countWrappedLines(ctx, state.text.subtitle, innerWidth);
-    cursorY += lines * sizePx * 1.3 + sizePx * 0.4;
-  }
-
-  // Description
-  if (state.text.description) {
-    const sizePx = Math.max(10, Math.round(t.bodySize * scale));
-    ctx.font = `400 ${sizePx}px ${t.bodyFontFamily}`;
-    ctx.fillStyle = t.bodyColor;
-    wrapAndDrawText(ctx, state.text.description, xForAlign, cursorY, innerWidth, sizePx * 1.4);
-  }
-
-  // Ingredients (rendered as a single dot-separated line beneath everything)
-  if (state.text.ingredients && state.text.ingredients.length > 0) {
-    const sizePx = Math.max(10, Math.round(t.bodySize * scale));
-    ctx.font = `400 ${sizePx}px ${t.bodyFontFamily}`;
-    ctx.fillStyle = t.bodyColor;
-    const line = state.text.ingredients.join("  ·  ");
-    const yLine = rect.y + rect.height - padY - sizePx;
-    wrapAndDrawText(ctx, line, xForAlign, yLine, innerWidth, sizePx * 1.3);
-  }
+  onOverflow?.({ shrunk, overflowed });
 }
 
-/** Wrap-and-draw using the active ctx font. */
-function wrapAndDrawText(
+/** Pure helper — wrap text into lines for the active ctx font. */
+function wrapLines(
   ctx: CanvasRenderingContext2D,
   text: string,
-  x: number,
-  y: number,
   maxWidth: number,
-  lineHeight: number,
-) {
-  const words = text.split(/\s+/);
+): string[] {
+  const words = text.split(/\s+/).filter(Boolean);
+  if (words.length === 0) return [];
   const lines: string[] = [];
   let current = "";
   for (const w of words) {
@@ -217,26 +361,17 @@ function wrapAndDrawText(
     }
   }
   if (current) lines.push(current);
-  lines.forEach((line, i) => ctx.fillText(line, x, y + i * lineHeight));
+  return lines;
 }
 
-function countWrappedLines(
-  ctx: CanvasRenderingContext2D,
-  text: string,
-  maxWidth: number,
-): number {
-  const words = text.split(/\s+/);
-  let lines = 1;
-  let current = "";
-  for (const w of words) {
-    const test = current ? current + " " + w : w;
-    if (ctx.measureText(test).width <= maxWidth) current = test;
-    else {
-      lines++;
-      current = w;
-    }
-  }
-  return lines;
+/** "#rrggbb" → "rgba(r,g,b,a)". Falls back to the original colour on parse fail. */
+function hexToRgba(hex: string, alpha: number): string {
+  const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex.trim());
+  if (!m) return hex;
+  const r = parseInt(m[1], 16);
+  const g = parseInt(m[2], 16);
+  const b = parseInt(m[3], 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
 // ── Export (delegates artwork render to existing print-export.ts) ────────
