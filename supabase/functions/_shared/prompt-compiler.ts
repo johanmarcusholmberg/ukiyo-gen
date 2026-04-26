@@ -845,8 +845,9 @@ export function compilePromptForOpenAI(
     ? `\nDO NOT: ${oa.avoid.join(". ")}.`
     : "";
 
+  const strictSuffix = styleStrictSuffix(styleKey);
   return {
-    prompt: [base, guidance, avoid].filter(Boolean).join("\n"),
+    prompt: [base, guidance, avoid, strictSuffix].filter(Boolean).join("\n"),
     provider: "openai",
     category: oa.category,
   };
