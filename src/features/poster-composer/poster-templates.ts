@@ -44,8 +44,32 @@ export interface PosterTemplate {
     align: "left" | "center" | "right";
     /** Tracking (CSS letter-spacing) for the title. */
     titleLetterSpacing: string;
+    /** Subtitle / description tracking. */
+    subtitleLetterSpacing: string;
+    descriptionLetterSpacing: string;
     /** Whether the title is uppercased on render. */
     titleUppercase: boolean;
+    /**
+     * Modern proportional sizing — fractions of the poster's shorter side.
+     * When set, these take priority over the legacy `titleSize` etc. fields
+     * (which are kept for backward compatibility with templates that
+     * haven't been migrated). Renderer = clamp(min, ratio * shortEdge, max).
+     */
+    titleSizeRatio?: number;
+    subtitleSizeRatio?: number;
+    descriptionSizeRatio?: number;
+    /** Line-heights (unitless multipliers). */
+    titleLineHeight: number;
+    subtitleLineHeight: number;
+    descriptionLineHeight: number;
+    /** Max text-block width as a fraction of the safe-area width. */
+    titleMaxWidthRatio: number;
+    subtitleMaxWidthRatio: number;
+    descriptionMaxWidthRatio: number;
+    /** Vertical gap between text blocks, in pt @ 1000px reference height. */
+    blockGap: number;
+    /** Inner padding of the safe area, in pt @ 1000px reference height. */
+    blockPadding: number;
   };
 }
 
