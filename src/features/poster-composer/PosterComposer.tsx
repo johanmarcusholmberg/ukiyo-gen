@@ -163,6 +163,26 @@ export default function PosterComposer({
   const safeRatio = state.layout.safeAreaEnabled
     ? state.layout.safeAreaHeightRatio
     : 0;
+
+  // Run the same overflow logic that the export will use, against a
+  // reference 1000-tall poster so the warning matches the export result.
+  const overflowInfo = useMemo(
+    () => measurePosterOverlay(state, 1000, 1400),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [
+      state.templateId,
+      state.textMode,
+      state.layout.safeAreaEnabled,
+      state.layout.safeAreaHeightRatio,
+      state.layout.safeAreaPosition,
+      state.text.title,
+      state.text.subtitle,
+      state.text.description,
+      (state.text.ingredients ?? []).join("|"),
+    ],
+  );
+
+  const isBottomBand = state.layout.safeAreaPosition === "bottom";
   const safeAreaCss: React.CSSProperties = {
     position: "absolute",
     left: 0,
@@ -172,7 +192,8 @@ export default function PosterComposer({
     display: "flex",
     flexDirection: "column",
     justifyContent: "center",
-    padding: "6%",
+    padding: `${tpl.typography.blockPadding / 10}%`,
+    gap: `${tpl.typography.blockGap / 10}%`,
     color: tpl.typography.titleColor,
     fontFamily: tpl.typography.bodyFontFamily,
     textAlign: tpl.typography.align,
@@ -182,6 +203,22 @@ export default function PosterComposer({
       : "borderBottom"]: showPreviewOverlay ? "none" : "1px dashed hsl(var(--border))",
     [state.layout.safeAreaPosition === "bottom" ? "bottom" : "top"]: 0,
   };
+
+  // Subtle 8–12px gradient fade between artwork and safe-area band.
+  // Sits just outside the band on the artwork side; same surface colour.
+  const fadeCss: React.CSSProperties | null = showPreviewOverlay
+    ? {
+        position: "absolute",
+        left: 0,
+        right: 0,
+        height: 12,
+        pointerEvents: "none",
+        background: isBottomBand
+          ? `linear-gradient(to bottom, transparent, ${posterSurfaceBackground})`
+          : `linear-gradient(to top, transparent, ${posterSurfaceBackground})`,
+        [isBottomBand ? "bottom" : "top"]: `${safeRatio * 100}%`,
+      }
+    : null;
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[1fr,320px] gap-6">
