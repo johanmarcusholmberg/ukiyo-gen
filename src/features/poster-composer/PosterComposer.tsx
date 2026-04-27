@@ -11,7 +11,7 @@
  */
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Download, Loader2, AlertTriangle, Info, RefreshCw } from "lucide-react";
+import { Download, Loader2, AlertTriangle, Info, RefreshCw, Undo2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
