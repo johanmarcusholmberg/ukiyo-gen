@@ -44,8 +44,32 @@ export interface PosterTemplate {
     align: "left" | "center" | "right";
     /** Tracking (CSS letter-spacing) for the title. */
     titleLetterSpacing: string;
+    /** Subtitle / description tracking. */
+    subtitleLetterSpacing: string;
+    descriptionLetterSpacing: string;
     /** Whether the title is uppercased on render. */
     titleUppercase: boolean;
+    /**
+     * Modern proportional sizing — fractions of the poster's shorter side.
+     * When set, these take priority over the legacy `titleSize` etc. fields
+     * (which are kept for backward compatibility with templates that
+     * haven't been migrated). Renderer = clamp(min, ratio * shortEdge, max).
+     */
+    titleSizeRatio?: number;
+    subtitleSizeRatio?: number;
+    descriptionSizeRatio?: number;
+    /** Line-heights (unitless multipliers). */
+    titleLineHeight: number;
+    subtitleLineHeight: number;
+    descriptionLineHeight: number;
+    /** Max text-block width as a fraction of the safe-area width. */
+    titleMaxWidthRatio: number;
+    subtitleMaxWidthRatio: number;
+    descriptionMaxWidthRatio: number;
+    /** Vertical gap between text blocks, in pt @ 1000px reference height. */
+    blockGap: number;
+    /** Inner padding of the safe area, in pt @ 1000px reference height. */
+    blockPadding: number;
   };
 }
 
@@ -78,7 +102,20 @@ export const POSTER_TEMPLATES: Record<PosterTemplateId, PosterTemplate> = {
       bodyColor: "#444444",
       align: "center",
       titleLetterSpacing: "0",
+      subtitleLetterSpacing: "0.04em",
+      descriptionLetterSpacing: "0.02em",
       titleUppercase: false,
+      titleSizeRatio: 0.06,
+      subtitleSizeRatio: 0.024,
+      descriptionSizeRatio: 0.02,
+      titleLineHeight: 1.05,
+      subtitleLineHeight: 1.3,
+      descriptionLineHeight: 1.4,
+      titleMaxWidthRatio: 0.8,
+      subtitleMaxWidthRatio: 0.8,
+      descriptionMaxWidthRatio: 0.75,
+      blockGap: 14,
+      blockPadding: 28,
     },
   },
 
@@ -95,10 +132,10 @@ export const POSTER_TEMPLATES: Record<PosterTemplateId, PosterTemplate> = {
     defaultLayout: {
       safeAreaEnabled: false,
       safeAreaPosition: "bottom",
-      safeAreaHeightRatio: 0.3,
+      safeAreaHeightRatio: 0.22,
       backgroundColor: "#fdfaf3",
     },
-    layout: { imageArea: 0.7, textArea: 0.3 },
+    layout: { imageArea: 0.78, textArea: 0.22 },
     typography: {
       titleSize: 96,
       subtitleSize: 28,
@@ -108,8 +145,21 @@ export const POSTER_TEMPLATES: Record<PosterTemplateId, PosterTemplate> = {
       titleColor: "#1a1a1a",
       bodyColor: "#5a5040",
       align: "center",
-      titleLetterSpacing: "0.18em",
+      titleLetterSpacing: "0.04em",
+      subtitleLetterSpacing: "0.12em",
+      descriptionLetterSpacing: "0.08em",
       titleUppercase: true,
+      titleSizeRatio: 0.065,
+      subtitleSizeRatio: 0.024,
+      descriptionSizeRatio: 0.022,
+      titleLineHeight: 1.0,
+      subtitleLineHeight: 1.25,
+      descriptionLineHeight: 1.35,
+      titleMaxWidthRatio: 0.75,
+      subtitleMaxWidthRatio: 0.75,
+      descriptionMaxWidthRatio: 0.7,
+      blockGap: 14,
+      blockPadding: 28,
     },
   },
 
@@ -145,7 +195,20 @@ export const POSTER_TEMPLATES: Record<PosterTemplateId, PosterTemplate> = {
       bodyColor: "#6b624f",
       align: "center",
       titleLetterSpacing: "0.04em",
+      subtitleLetterSpacing: "0.06em",
+      descriptionLetterSpacing: "0.04em",
       titleUppercase: false,
+      titleSizeRatio: 0.05,
+      subtitleSizeRatio: 0.022,
+      descriptionSizeRatio: 0.02,
+      titleLineHeight: 1.1,
+      subtitleLineHeight: 1.3,
+      descriptionLineHeight: 1.4,
+      titleMaxWidthRatio: 0.8,
+      subtitleMaxWidthRatio: 0.8,
+      descriptionMaxWidthRatio: 0.75,
+      blockGap: 12,
+      blockPadding: 24,
     },
   },
 };

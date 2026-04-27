@@ -10,7 +10,7 @@
  * over it on a temporary canvas at export time.
  */
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Download, Loader2, AlertTriangle, Info, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -33,6 +33,7 @@ import {
   downloadPrintExport,
   usePosterComposer,
   resolvePosterSurfaceBackground,
+  measurePosterOverlay,
 } from "./usePosterComposer";
 import { POSTER_TEMPLATE_LIST, getPosterTemplate } from "./poster-templates";
 import type {
@@ -162,6 +163,26 @@ export default function PosterComposer({
   const safeRatio = state.layout.safeAreaEnabled
     ? state.layout.safeAreaHeightRatio
     : 0;
+
+  // Run the same overflow logic that the export will use, against a
+  // reference 1000-tall poster so the warning matches the export result.
+  const overflowInfo = useMemo(
+    () => measurePosterOverlay(state, 1000, 1400),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [
+      state.templateId,
+      state.textMode,
+      state.layout.safeAreaEnabled,
+      state.layout.safeAreaHeightRatio,
+      state.layout.safeAreaPosition,
+      state.text.title,
+      state.text.subtitle,
+      state.text.description,
+      (state.text.ingredients ?? []).join("|"),
+    ],
+  );
+
+  const isBottomBand = state.layout.safeAreaPosition === "bottom";
   const safeAreaCss: React.CSSProperties = {
     position: "absolute",
     left: 0,
@@ -171,7 +192,8 @@ export default function PosterComposer({
     display: "flex",
     flexDirection: "column",
     justifyContent: "center",
-    padding: "6%",
+    padding: `${tpl.typography.blockPadding / 10}%`,
+    gap: `${tpl.typography.blockGap / 10}%`,
     color: tpl.typography.titleColor,
     fontFamily: tpl.typography.bodyFontFamily,
     textAlign: tpl.typography.align,
@@ -181,6 +203,22 @@ export default function PosterComposer({
       : "borderBottom"]: showPreviewOverlay ? "none" : "1px dashed hsl(var(--border))",
     [state.layout.safeAreaPosition === "bottom" ? "bottom" : "top"]: 0,
   };
+
+  // Subtle 8–12px gradient fade between artwork and safe-area band.
+  // Sits just outside the band on the artwork side; same surface colour.
+  const fadeCss: React.CSSProperties | null = showPreviewOverlay
+    ? {
+        position: "absolute",
+        left: 0,
+        right: 0,
+        height: 12,
+        pointerEvents: "none",
+        background: isBottomBand
+          ? `linear-gradient(to bottom, transparent, ${posterSurfaceBackground})`
+          : `linear-gradient(to top, transparent, ${posterSurfaceBackground})`,
+        [isBottomBand ? "bottom" : "top"]: `${safeRatio * 100}%`,
+      }
+    : null;
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[1fr,320px] gap-6">
@@ -198,6 +236,7 @@ export default function PosterComposer({
               aspectRatio: "5 / 7",
               width: "100%",
               maxWidth: 420,
+              containerType: "inline-size",
             }}
           >
             <img
@@ -205,6 +244,7 @@ export default function PosterComposer({
               alt="Poster artwork"
               className="absolute inset-0 w-full h-full object-cover"
             />
+            {fadeCss && <div style={fadeCss} />}
             {state.layout.safeAreaEnabled && (
               <div style={safeAreaCss}>
                 {showPreviewOverlay && state.text.title && (
@@ -212,22 +252,31 @@ export default function PosterComposer({
                     style={{
                       fontFamily: tpl.typography.titleFontFamily,
                       fontWeight: 700,
-                      fontSize: `clamp(14px, ${tpl.typography.titleSize / 12}vw, ${tpl.typography.titleSize}px)`,
+                      fontSize: `${(tpl.typography.titleSizeRatio ?? tpl.typography.titleSize / 1000) * 100}cqw`,
                       letterSpacing: tpl.typography.titleLetterSpacing,
                       textTransform: tpl.typography.titleUppercase ? "uppercase" : "none",
                       color: tpl.typography.titleColor,
-                      lineHeight: 1.1,
+                      lineHeight: tpl.typography.titleLineHeight,
+                      maxWidth: `${tpl.typography.titleMaxWidthRatio * 100}%`,
+                      marginLeft: tpl.typography.align === "center" ? "auto" : undefined,
+                      marginRight: tpl.typography.align === "center" ? "auto" : undefined,
                     }}
                   >
-                    {state.text.title}
+                    {tpl.typography.titleUppercase
+                      ? state.text.title.toUpperCase()
+                      : state.text.title}
                   </div>
                 )}
                 {showPreviewOverlay && state.text.subtitle && (
                   <div
                     style={{
-                      marginTop: "4%",
-                      fontSize: `clamp(10px, ${tpl.typography.subtitleSize / 18}vw, ${tpl.typography.subtitleSize}px)`,
+                      fontSize: `${(tpl.typography.subtitleSizeRatio ?? tpl.typography.subtitleSize / 1000) * 100}cqw`,
+                      letterSpacing: tpl.typography.subtitleLetterSpacing,
                       color: tpl.typography.bodyColor,
+                      lineHeight: tpl.typography.subtitleLineHeight,
+                      maxWidth: `${tpl.typography.subtitleMaxWidthRatio * 100}%`,
+                      marginLeft: tpl.typography.align === "center" ? "auto" : undefined,
+                      marginRight: tpl.typography.align === "center" ? "auto" : undefined,
                     }}
                   >
                     {state.text.subtitle}
@@ -236,10 +285,13 @@ export default function PosterComposer({
                 {showPreviewOverlay && state.text.description && (
                   <div
                     style={{
-                      marginTop: "3%",
-                      fontSize: `clamp(9px, ${tpl.typography.bodySize / 22}vw, ${tpl.typography.bodySize}px)`,
+                      fontSize: `${(tpl.typography.descriptionSizeRatio ?? tpl.typography.bodySize / 1000) * 100}cqw`,
+                      letterSpacing: tpl.typography.descriptionLetterSpacing,
                       color: tpl.typography.bodyColor,
-                      lineHeight: 1.4,
+                      lineHeight: tpl.typography.descriptionLineHeight,
+                      maxWidth: `${tpl.typography.descriptionMaxWidthRatio * 100}%`,
+                      marginLeft: tpl.typography.align === "center" ? "auto" : undefined,
+                      marginRight: tpl.typography.align === "center" ? "auto" : undefined,
                     }}
                   >
                     {state.text.description}
@@ -250,11 +302,13 @@ export default function PosterComposer({
                   state.text.ingredients.length > 0 && (
                     <div
                       style={{
-                        marginTop: "auto",
-                        paddingTop: "3%",
-                        fontSize: `clamp(9px, ${tpl.typography.bodySize / 22}vw, ${tpl.typography.bodySize}px)`,
+                        fontSize: `${(tpl.typography.descriptionSizeRatio ?? tpl.typography.bodySize / 1000) * 100}cqw`,
+                        letterSpacing: tpl.typography.descriptionLetterSpacing,
                         color: tpl.typography.bodyColor,
-                        letterSpacing: "0.05em",
+                        lineHeight: tpl.typography.descriptionLineHeight,
+                        maxWidth: `${tpl.typography.descriptionMaxWidthRatio * 100}%`,
+                        marginLeft: tpl.typography.align === "center" ? "auto" : undefined,
+                        marginRight: tpl.typography.align === "center" ? "auto" : undefined,
                       }}
                     >
                       {state.text.ingredients.join("  ·  ")}
@@ -278,6 +332,22 @@ export default function PosterComposer({
             )}
           </div>
         </div>
+        {overflowInfo.overflowed && (
+          <div className="flex items-start gap-1.5 text-[11px] font-display border rounded-sm px-2 py-1.5 bg-amber-500/10 border-amber-500/30 text-amber-600">
+            <AlertTriangle className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
+            <span>
+              Text is too long for this poster area. Shorten text or increase safe area height.
+            </span>
+          </div>
+        )}
+        {!overflowInfo.overflowed && overflowInfo.shrunk && (
+          <div className="flex items-start gap-1.5 text-[10px] font-display border rounded-sm px-2 py-1 bg-muted/50 border-border text-muted-foreground">
+            <Info className="h-3 w-3 mt-0.5 flex-shrink-0" />
+            <span>
+              Text was slightly shrunk to fit. Consider increasing the safe area height for best results.
+            </span>
+          </div>
+        )}
         <p className="font-display text-[11px] text-muted-foreground text-center">
           Live preview · Final export renders at the print format's full
           resolution (300 PPI when source allows).

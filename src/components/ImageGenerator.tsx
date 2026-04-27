@@ -917,14 +917,14 @@ export default function ImageGenerator({
                 />
                 <div className="flex flex-col">
                   <span className="font-display text-xs text-foreground">
-                    Safe text area (for poster layout)
+                    Safe text area
                   </span>
                   <span className="font-display text-[10px] text-muted-foreground">
                     {posterSafeAreaEnabled
                       ? (composerTitle || composerSubtitle || composerDescription || composerIngredientsRaw
-                          ? "Generator will leave a clean empty band at the bottom for text."
+                          ? "Works with any art style — generator will leave a clean empty band for your typography."
                           : "Enabled, but no poster text yet — generation is unaffected until text is added.")
-                      : "Off — image uses the full canvas. Toggle on to reserve a band for typography."}
+                      : "Off — image uses the full canvas. Toggle on (any style) to reserve a band for typography."}
                   </span>
                 </div>
               </div>
