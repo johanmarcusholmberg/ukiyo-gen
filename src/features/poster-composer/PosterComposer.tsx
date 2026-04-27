@@ -34,6 +34,7 @@ import {
   usePosterComposer,
   resolvePosterSurfaceBackground,
   measurePosterOverlay,
+  autoFitPosterText,
 } from "./usePosterComposer";
 import { POSTER_TEMPLATE_LIST, getPosterTemplate } from "./poster-templates";
 import type {
