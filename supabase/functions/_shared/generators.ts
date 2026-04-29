@@ -35,6 +35,12 @@ export interface GenerateArgs {
   sourceImageUrl?: string;
   /** Optional style strictness — defaults per-style + per-provider. */
   strictness?: Strictness;
+  /**
+   * Poster format hint — propagated into the prompt compiler so every
+   * provider composes for the right canvas (e.g. "vertical 5:7 poster
+   * format suitable for 50 × 70 cm print").
+   */
+  posterFormatHint?: string;
 }
 
 /** Map our supported aspect ratios to SDXL-friendly target sizes (longest side ~1024). */
@@ -67,6 +73,7 @@ export async function generateWithGemini(args: GenerateArgs): Promise<ProviderRe
     backgroundStyle: args.backgroundStyle,
     isEdit: !!args.isEdit,
     printMode: !!args.printMode,
+    posterFormatHint: args.posterFormatHint,
   });
 
   const messages = args.isEdit && args.sourceImageUrl
@@ -141,6 +148,7 @@ export async function generateWithSDXL(args: GenerateArgs): Promise<ProviderResu
     printMode: !!args.printMode,
     provider: "sdxl",
     strictness,
+    posterFormatHint: args.posterFormatHint,
   });
 
   // Pre-generation validation — log issues but only block on errors.
