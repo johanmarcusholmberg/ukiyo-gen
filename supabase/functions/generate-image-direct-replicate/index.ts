@@ -79,12 +79,14 @@ serve(async (req) => {
         typeof posterFormatHint === "string" ? posterFormatHint : undefined,
     });
 
-    const { width, height } = sdxlSize(aspectRatio);
+    const sized = sdxlSizeForFormat(posterFormatId, aspectRatio);
+    const { width, height } = sized;
     const startedAt = Date.now();
 
     console.log(
       `[direct-replicate] style=${styleKey} category=${compiled.category} ` +
-        `prompt_len=${compiled.prompt.length} size=${width}x${height}`,
+        `prompt_len=${compiled.prompt.length} size=${width}x${height} ` +
+        `sizeSource=${sized.source} posterFormatId=${posterFormatId ?? "none"}`,
     );
 
     const createRes = await fetch("https://api.replicate.com/v1/predictions", {
