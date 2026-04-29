@@ -47,6 +47,7 @@ serve(async (req) => {
       sourceImageUrl,
       generatorPreference,
       strictness,
+      posterFormatHint,
     } = body || {};
 
     if (!prompt || typeof prompt !== "string") {
