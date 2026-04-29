@@ -36,7 +36,7 @@ import { saveToGallery, replaceInGallery } from "@/lib/gallery";
 import ImagePreviewMockups from "@/components/ImagePreviewMockups";
 import type { StyleConfig } from "@/lib/style-config";
 import { type QualityTarget, getResolutionForPrintSize, formatResolution } from "@/lib/print-resolution";
-import { PRINT_FORMATS, type PrintFormat, formatExportDescription } from "@/lib/print-formats";
+import { PRINT_FORMATS, type PrintFormat, formatExportDescription, getPosterPromptHint } from "@/lib/print-formats";
 import { preparePrintExport, downloadPrintExport } from "@/lib/print-export";
 import { cn } from "@/lib/utils";
 import { Progress } from "@/components/ui/progress";
@@ -191,7 +191,11 @@ export default function ImageGenerator({
   const upscaleRunId = useRef(0);
 
   const suggestions = isTertiary && styleConfig.prompts.tertiary ? styleConfig.prompts.tertiary : isThemed ? styleConfig.prompts.themed : styleConfig.prompts.freestyle;
-  const effectiveAspectRatio = generationMode === "print-ready" ? selectedPrintFormat.aspectRatio : printSize.ratio;
+  // Poster format is the single source of truth for aspect ratio across
+  // generation, preview, composer, and export. Standard mode used to drive
+  // ratio from PrintSizeSelector — we now ALWAYS use the selected poster
+  // format so the choice flows through every provider deterministically.
+  const effectiveAspectRatio = selectedPrintFormat.aspectRatio;
   const upscaleConfig = UPSCALE_MODES[upscaleMode];
 
   // Style + provider-aware recipe recommendation. Recomputes whenever the
@@ -339,6 +343,9 @@ export default function ImageGenerator({
         referenceImageUrl,
         isEdit: !!referenceImageUrl,
         strictness: effectiveStrictness,
+        posterFormatId: selectedPrintFormat.id,
+        posterFormatHint: getPosterPromptHint(selectedPrintFormat.id),
+        targetAspectRatio: selectedPrintFormat.aspectRatioDecimal,
       });
 
       const baseUrl = gen.imageUrl;
@@ -680,37 +687,37 @@ export default function ImageGenerator({
           </div>
         </div>
 
-        {/* Print Format Selector */}
-        {generationMode === "print-ready" && (
-          <div className="rounded-sm border border-primary/20 bg-primary/5 p-3 space-y-2">
-            <p className="font-display font-bold text-sm text-foreground">Print Format</p>
-            <div className="flex flex-wrap gap-2">
-              {PRINT_FORMATS.map((fmt) => (
-                <button
-                  key={fmt.id}
-                  onClick={() => setSelectedPrintFormat(fmt)}
-                  className={cn(
-                    "text-xs px-3 py-1.5 rounded-sm border font-display transition-colors",
-                    selectedPrintFormat.id === fmt.id
-                      ? "bg-primary text-primary-foreground border-primary"
-                      : "bg-secondary text-secondary-foreground border-border hover:bg-muted"
-                  )}
-                >
-                  {fmt.label}
-                </button>
-              ))}
-            </div>
-            <div className="text-xs text-muted-foreground font-display space-y-0.5">
-              <p>
-                Aspect ratio: <span className="font-bold text-foreground">{selectedPrintFormat.aspectRatio}</span>
-                {" · "}
-                Target: <span className="font-bold text-foreground">{formatResolution(selectedPrintFormat.preferredPixelWidth, selectedPrintFormat.preferredPixelHeight)}</span>
-              </p>
-            </div>
+        {/* Poster Size — single source of truth for aspect ratio across
+            generation, preview, composer, and export. Always visible. */}
+        <div className="rounded-sm border border-primary/20 bg-primary/5 p-3 space-y-2">
+          <p className="font-display font-bold text-sm text-foreground">Poster size</p>
+          <div className="flex flex-wrap gap-2">
+            {PRINT_FORMATS.map((fmt) => (
+              <button
+                key={fmt.id}
+                onClick={() => setSelectedPrintFormat(fmt)}
+                className={cn(
+                  "text-xs px-3 py-1.5 rounded-sm border font-display transition-colors",
+                  selectedPrintFormat.id === fmt.id
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "bg-secondary text-secondary-foreground border-border hover:bg-muted"
+                )}
+              >
+                {fmt.label}
+              </button>
+            ))}
           </div>
-        )}
+          <div className="text-xs text-muted-foreground font-display space-y-0.5">
+            <p>
+              Aspect ratio: <span className="font-bold text-foreground">{selectedPrintFormat.aspectRatio}</span>
+              {" · "}
+              300 PPI target: <span className="font-bold text-foreground">{formatResolution(selectedPrintFormat.preferredPixelWidth, selectedPrintFormat.preferredPixelHeight)}</span>
+            </p>
+            <p className="text-[11px]">Drives composition for every provider, the preview canvas, the poster composer, and the print export.</p>
+          </div>
+        </div>
 
-        {/* Standard mode selectors */}
+        {/* Standard-mode quality toggle (kept; ratio is now driven by Poster size above). */}
         {generationMode === "standard" && (
           <PrintSizeSelector selected={printSize} onChange={setPrintSize} qualityTarget={qualityTarget} onQualityChange={setQualityTarget} />
         )}

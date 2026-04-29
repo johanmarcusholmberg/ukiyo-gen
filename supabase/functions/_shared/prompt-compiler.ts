@@ -553,6 +553,27 @@ export interface CompileOptions {
   provider?: ResolvedProviderId;
   /** Style strictness — controls SDXL anchor repetition + negative boost. */
   strictness?: Strictness;
+  /**
+   * Poster composition hint, e.g. "vertical 5:7 poster format suitable for
+   * 50 × 70 cm print". When provided, a strong COMPOSITION FORMAT
+   * directive is injected so every provider composes for the right canvas.
+   */
+  posterFormatHint?: string;
+}
+
+/**
+ * Build the COMPOSITION FORMAT directive that is appended to every
+ * provider's prompt. Strong, deterministic wording — applies the same
+ * constraint regardless of model. Returns "" when no hint is set.
+ */
+export function buildPosterFormatInstruction(hint?: string): string {
+  if (!hint) return "";
+  return (
+    `COMPOSITION FORMAT: Compose strictly for a ${hint}. The artwork must ` +
+    `match this aspect ratio. Do not create a square, landscape, cropped, ` +
+    `or freeform layout unless the selected poster format is square. Keep ` +
+    `the main subject comfortably inside the printable poster area.`
+  );
 }
 
 export interface CompiledPrompt {
@@ -607,6 +628,8 @@ export function compilePrompt(
     `\nWALL ART COMPOSITION: ${WALL_ART_COMPOSITION.join(". ")}`,
   ].join("\n");
 
+  const formatInstruction = buildPosterFormatInstruction(options.posterFormatHint);
+
   if (!rules) {
     const sections = [
       `PRIMARY SUBJECT: ${userPrompt}`,
@@ -617,6 +640,7 @@ export function compilePrompt(
       alwaysOnQuality,
       "",
       options.aspectRatio ? `The image must have a ${options.aspectRatio} aspect ratio.` : "",
+      formatInstruction,
       buildArtworkBgText(options.backgroundStyle),
       styleStrictSuffix(styleKey),
       "Generate at maximum native resolution. Output the highest fidelity image possible.",
@@ -653,6 +677,7 @@ export function compilePrompt(
       `EDGE SAFETY: ${edgeSafetyLines.join(". ")}`,
       bgText,
       ratioText,
+      formatInstruction,
       `STYLE QUALITY: ${rules.qualityRules.join(". ")}`,
       `GLOBAL QUALITY: ${GLOBAL_QUALITY.join(". ")}`,
       `AVOID: ${rules.avoidRules.join(", ")}`,
@@ -694,6 +719,7 @@ export function compilePrompt(
     "",
     bgText,
     ratioText,
+    formatInstruction,
     variationText,
     "",
     styleStrictSuffix(styleKey),
@@ -732,15 +758,24 @@ export function compilePromptForSDXL(
       ? "warm cream paper background"
       : "pure white background";
 
-  // FRONT-LOAD: display-name anchor + subject + style anchors + medium + reinforcement.
+  // Compact poster-format token — front-loaded so SDXL composes for the
+  // right canvas. Falls back to the aspectRatio string when no hint is set.
+  const formatToken = options.posterFormatHint
+    ? options.posterFormatHint
+    : aspectRatio
+      ? `${aspectRatio} aspect ratio poster composition`
+      : "";
+
+  // FRONT-LOAD: format + display-name anchor + subject + style anchors + medium + reinforcement.
   // (SDXL weights early tokens heavily — putting the medium first locks the style.)
   const head = [
+    formatToken,
     displayNameToken,
     userPrompt,
     ...mediumTokens.slice(0, 2),
     ...anchors,
     ...sdxl.reinforcement,
-  ].join(", ");
+  ].filter(Boolean).join(", ");
 
   const composition = sdxl.composition.join(", ");
 
@@ -911,6 +946,7 @@ export function createStyleHandler(styleKey: string) {
         printMode,
         generatorPreference,
         strictness,
+        posterFormatHint,
       } = body || {};
 
       if (!prompt || typeof prompt !== "string") {
@@ -960,6 +996,8 @@ export function createStyleHandler(styleKey: string) {
           isEdit,
           sourceImageUrl,
           strictness: validStrictness,
+          posterFormatHint:
+            typeof posterFormatHint === "string" ? posterFormatHint : undefined,
         });
 
         return new Response(

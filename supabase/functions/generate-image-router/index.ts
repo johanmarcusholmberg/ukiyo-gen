@@ -27,6 +27,8 @@ interface Body {
   qualityIntent?: "fast" | "balanced" | "premium";
   /** Style strictness: balanced | strict | very_strict. */
   strictness?: "balanced" | "strict" | "very_strict";
+  /** Poster format hint, e.g. "vertical 5:7 poster format suitable for 50 × 70 cm print". */
+  posterFormatHint?: string;
 }
 
 serve(async (req) => {
@@ -45,6 +47,7 @@ serve(async (req) => {
       sourceImageUrl,
       generatorPreference,
       strictness,
+      posterFormatHint,
     } = body || {};
 
     if (!prompt || typeof prompt !== "string") {
@@ -101,6 +104,8 @@ serve(async (req) => {
         isEdit,
         sourceImageUrl,
         strictness: validStrictness,
+        posterFormatHint:
+          typeof posterFormatHint === "string" ? posterFormatHint : undefined,
       });
 
       console.log(

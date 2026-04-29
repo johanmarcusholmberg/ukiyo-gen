@@ -29,6 +29,7 @@ interface Body {
   quality?: "low" | "medium" | "high" | "auto";
   /** Optional: "balanced" | "strict" | "very_strict". */
   strictness?: "balanced" | "strict" | "very_strict";
+  posterFormatHint?: string;
 }
 
 const OPENAI_MODEL = "gpt-image-1";
@@ -73,6 +74,7 @@ serve(async (req) => {
       printMode,
       quality,
       strictness,
+      posterFormatHint,
     } = body || {};
 
     if (!prompt || typeof prompt !== "string") {
@@ -114,6 +116,8 @@ serve(async (req) => {
       printMode: !!printMode,
       provider: "openai",
       strictness,
+      posterFormatHint:
+        typeof posterFormatHint === "string" ? posterFormatHint : undefined,
     });
     const compiledPrompt = compiled.prompt;
 
