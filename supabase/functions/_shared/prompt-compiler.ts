@@ -758,15 +758,24 @@ export function compilePromptForSDXL(
       ? "warm cream paper background"
       : "pure white background";
 
-  // FRONT-LOAD: display-name anchor + subject + style anchors + medium + reinforcement.
+  // Compact poster-format token — front-loaded so SDXL composes for the
+  // right canvas. Falls back to the aspectRatio string when no hint is set.
+  const formatToken = options.posterFormatHint
+    ? options.posterFormatHint
+    : aspectRatio
+      ? `${aspectRatio} aspect ratio poster composition`
+      : "";
+
+  // FRONT-LOAD: format + display-name anchor + subject + style anchors + medium + reinforcement.
   // (SDXL weights early tokens heavily — putting the medium first locks the style.)
   const head = [
+    formatToken,
     displayNameToken,
     userPrompt,
     ...mediumTokens.slice(0, 2),
     ...anchors,
     ...sdxl.reinforcement,
-  ].join(", ");
+  ].filter(Boolean).join(", ");
 
   const composition = sdxl.composition.join(", ");
 
