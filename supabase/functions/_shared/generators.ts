@@ -168,7 +168,11 @@ export async function generateWithSDXL(args: GenerateArgs): Promise<ProviderResu
       `prompt_len=${compiled.prompt.length} neg_len=${(compiled.negativePrompt ?? "").length}`,
   );
 
-  const { width, height } = sdxlSize(args.aspectRatio);
+  const sized = sdxlSizeForFormat(args.posterFormatId, args.aspectRatio);
+  const { width, height } = sized;
+  console.log(
+    `[sdxl] size=${width}x${height} source=${sized.source} posterFormatId=${args.posterFormatId ?? "none"} aspectRatio=${args.aspectRatio ?? "none"}`,
+  );
 
   // Create prediction
   const createRes = await fetch("https://api.replicate.com/v1/predictions", {
