@@ -86,7 +86,7 @@ serve(async (req) => {
     console.log(
       `[direct-replicate] style=${styleKey} category=${compiled.category} ` +
         `prompt_len=${compiled.prompt.length} size=${width}x${height} ` +
-        `sizeSource=${sized.source} posterFormatId=${posterFormatId ?? "none"}`,
+        `sizeSource=${sized.source} exact=${sized.exact} posterFormatId=${posterFormatId ?? "none"}`,
     );
 
     const createRes = await fetch("https://api.replicate.com/v1/predictions", {
@@ -182,6 +182,12 @@ serve(async (req) => {
         providerGenerationId: prediction.id,
         executionRoute: "direct_replicate",
         styleKey,
+        requestedWidth: width,
+        requestedHeight: height,
+        requestedAspectRatio: aspectRatio ?? null,
+        providerExactMatch: sized.exact,
+        providerAdjusted: !sized.exact,
+        sizeSource: sized.source,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );

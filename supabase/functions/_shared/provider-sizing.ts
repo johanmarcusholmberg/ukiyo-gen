@@ -53,6 +53,55 @@ function aspectRatioToDecimal(aspectRatio?: string): number | undefined {
   return a / b;
 }
 
+// ── Provider size map (mirrors src/lib/provider-size-map.ts) ────────────
+//
+// Hard-coded per-format request dimensions for each provider. Keep in sync
+// with the frontend file. `exact` records whether the dimensions match the
+// poster's aspect ratio perfectly; when false, the export pipeline is
+// expected to re-crop to the exact ratio.
+
+const PROVIDER_SIZE_MAP = {
+  sdxl: {
+    print_30x40: { width: 1024, height: 1344, exact: false },
+    print_50x70: { width: 1344, height: 1888, exact: true },
+    print_50x50: { width: 1024, height: 1024, exact: true },
+    print_a2: { width: 1408, height: 1984, exact: false },
+    print_a3: { width: 1408, height: 1984, exact: false },
+    print_a4: { width: 1408, height: 1984, exact: false },
+  } as Record<string, { width: number; height: number; exact: boolean }>,
+  openai: {
+    print_30x40: { size: "1024x1536", exact: false },
+    print_50x70: { size: "1024x1536", exact: false },
+    print_50x50: { size: "1024x1024", exact: true },
+    print_a2: { size: "1024x1536", exact: false },
+    print_a3: { size: "1024x1536", exact: false },
+    print_a4: { size: "1024x1536", exact: false },
+  } as Record<string, { size: "1024x1024" | "1024x1536" | "1536x1024"; exact: boolean }>,
+  gemini: {
+    print_30x40: { aspectRatio: "3:4", exact: true },
+    print_50x70: { aspectRatio: "3:4", exact: false },
+    print_50x50: { aspectRatio: "1:1", exact: true },
+    print_a2: { aspectRatio: "2:3", exact: false },
+    print_a3: { aspectRatio: "2:3", exact: false },
+    print_a4: { aspectRatio: "2:3", exact: false },
+  } as Record<string, { aspectRatio: string; exact: boolean }>,
+};
+
+export function getProviderSizeFromMap<T extends "sdxl" | "openai" | "gemini">(
+  provider: T,
+  posterFormatId?: string,
+):
+  | (T extends "sdxl" ? { width: number; height: number; exact: boolean } : never)
+  | (T extends "openai" ? { size: "1024x1024" | "1024x1536" | "1536x1024"; exact: boolean } : never)
+  | (T extends "gemini" ? { aspectRatio: string; exact: boolean } : never)
+  | null {
+  if (!posterFormatId) return null;
+  // deno-lint-ignore no-explicit-any
+  const map = (PROVIDER_SIZE_MAP as any)[provider];
+  if (!map) return null;
+  return map[posterFormatId] ?? null;
+}
+
 // ── SDXL ────────────────────────────────────────────────────────────────
 
 /** Snap to a multiple of `mult` (SDXL requires multiples of 8). */
@@ -68,12 +117,24 @@ function snap(n: number, mult = 8): number {
 export function sdxlSizeForFormat(
   posterFormatId?: string,
   aspectRatio?: string,
-): { width: number; height: number; source: "format" | "aspect" | "default" } {
+): {
+  width: number;
+  height: number;
+  source: "map" | "format" | "aspect" | "default";
+  exact: boolean;
+} {
+  // 1. Hard map (preferred — single source of truth)
+  const mapped = getProviderSizeFromMap("sdxl", posterFormatId);
+  if (mapped) {
+    return { width: mapped.width, height: mapped.height, source: "map", exact: mapped.exact };
+  }
+
+  // 2. Fallback: derive from format / aspect-ratio (legacy heuristic)
   const format = getPrintFormat(posterFormatId);
   const ratio = format?.aspectRatioDecimal ?? aspectRatioToDecimal(aspectRatio);
 
   if (!ratio) {
-    return { width: 1024, height: 1024, source: "default" };
+    return { width: 1024, height: 1024, source: "default", exact: false };
   }
 
   const LONG_SIDE_TARGET = 1344;
@@ -81,19 +142,19 @@ export function sdxlSizeForFormat(
 
   let width: number, height: number;
   if (ratio >= 1) {
-    // landscape or square
     width = LONG_SIDE_TARGET;
     height = Math.max(SHORT_SIDE_FLOOR, Math.round(LONG_SIDE_TARGET / ratio));
   } else {
-    // portrait
     height = LONG_SIDE_TARGET;
     width = Math.max(SHORT_SIDE_FLOOR, Math.round(LONG_SIDE_TARGET * ratio));
   }
 
+  const snapped = { width: snap(width), height: snap(height) };
+  // Heuristic dimensions are approximate by definition.
   return {
-    width: snap(width),
-    height: snap(height),
+    ...snapped,
     source: format ? "format" : "aspect",
+    exact: false,
   };
 }
 
@@ -108,17 +169,54 @@ export type OpenAISize = "1024x1024" | "1024x1536" | "1536x1024";
 export function openaiSizeForFormat(
   posterFormatId?: string,
   aspectRatio?: string,
-): { size: OpenAISize; width: number; height: number; source: "format" | "aspect" | "default" } {
+): {
+  size: OpenAISize;
+  width: number;
+  height: number;
+  source: "map" | "format" | "aspect" | "default";
+  exact: boolean;
+} {
+  // 1. Hard map (preferred)
+  const mapped = getProviderSizeFromMap("openai", posterFormatId);
+  if (mapped) {
+    const [w, h] = mapped.size.split("x").map(Number);
+    return { size: mapped.size, width: w, height: h, source: "map", exact: mapped.exact };
+  }
+
+  // 2. Fallback: derive from format / aspect-ratio
   const format = getPrintFormat(posterFormatId);
   const ratio = format?.aspectRatioDecimal ?? aspectRatioToDecimal(aspectRatio);
 
   if (!ratio) {
-    return { size: "1024x1024", width: 1024, height: 1024, source: "default" };
+    return { size: "1024x1024", width: 1024, height: 1024, source: "default", exact: false };
   }
 
   const source: "format" | "aspect" = format ? "format" : "aspect";
 
-  if (ratio > 1.05) return { size: "1536x1024", width: 1536, height: 1024, source };
-  if (ratio < 0.95) return { size: "1024x1536", width: 1024, height: 1536, source };
-  return { size: "1024x1024", width: 1024, height: 1024, source };
+  if (ratio > 1.05) return { size: "1536x1024", width: 1536, height: 1024, source, exact: false };
+  if (ratio < 0.95) return { size: "1024x1536", width: 1024, height: 1536, source, exact: false };
+  return { size: "1024x1024", width: 1024, height: 1024, source, exact: false };
+}
+
+// ── Gemini ──────────────────────────────────────────────────────────────
+
+/**
+ * Resolve the aspect-ratio Gemini should target for the given poster
+ * format. Gemini doesn't expose explicit pixel dimensions through our
+ * gateway call, so this is informational — the prompt compiler still
+ * carries the COMPOSITION FORMAT directive. We surface it through the
+ * normalized response so the UI can flag "approximate" outputs.
+ */
+export function geminiAspectForFormat(
+  posterFormatId?: string,
+  aspectRatio?: string,
+): { aspectRatio: string; source: "map" | "format" | "aspect" | "default"; exact: boolean } {
+  const mapped = getProviderSizeFromMap("gemini", posterFormatId);
+  if (mapped) {
+    return { aspectRatio: mapped.aspectRatio, source: "map", exact: mapped.exact };
+  }
+  const format = getPrintFormat(posterFormatId);
+  if (format) return { aspectRatio: format.aspectRatio, source: "format", exact: false };
+  if (aspectRatio) return { aspectRatio, source: "aspect", exact: false };
+  return { aspectRatio: "1:1", source: "default", exact: false };
 }

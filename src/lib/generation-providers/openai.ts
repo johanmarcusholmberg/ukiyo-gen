@@ -61,6 +61,11 @@ export async function generateWithOpenAIAdapter(
     fallbackUsed: false,
     strategy: "manual",
     executionRoute: "direct_openai",
-    metadata: { adapter: "openai-direct" },
+    requestedWidth: data.requestedWidth ?? data.width,
+    requestedHeight: data.requestedHeight ?? data.height,
+    requestedAspectRatio: data.requestedAspectRatio ?? req.aspectRatio,
+    providerExactMatch: data.providerExactMatch,
+    providerAdjusted: data.providerAdjusted,
+    metadata: { adapter: "openai-direct", requestedSize: data.requestedSize, sizeSource: data.sizeSource },
   };
 }

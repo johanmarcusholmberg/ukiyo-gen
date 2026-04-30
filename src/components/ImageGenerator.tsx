@@ -142,6 +142,8 @@ export default function ImageGenerator({
   const [lastStrategyUsed, setLastStrategyUsed] = useState<"auto" | "manual" | null>(null);
   const [lastExecutionRoute, setLastExecutionRoute] = useState<string | null>(null);
   const [lastRoutingReason, setLastRoutingReason] = useState<string | null>(null);
+  const [lastProviderExactMatch, setLastProviderExactMatch] = useState<boolean | null>(null);
+  const [lastRequestedSize, setLastRequestedSize] = useState<string | null>(null);
   const [compareOpen, setCompareOpen] = useState(false);
   // Poster Composer integration (additive — does not change the generator).
   // The user can configure template + text BEFORE generation. After the
@@ -358,6 +360,14 @@ export default function ImageGenerator({
       setLastStrategyUsed(gen.strategy);
       setLastExecutionRoute(gen.executionRoute);
       setLastRoutingReason(gen.routingReason ?? null);
+      setLastProviderExactMatch(
+        typeof gen.providerExactMatch === "boolean" ? gen.providerExactMatch : null,
+      );
+      setLastRequestedSize(
+        gen.requestedWidth && gen.requestedHeight
+          ? `${gen.requestedWidth}×${gen.requestedHeight}`
+          : gen.requestedAspectRatio ?? null,
+      );
 
       console.log(
         `[ImageGenerator] generated provider=${gen.generationProvider} model=${gen.generationModel} ` +
@@ -993,7 +1003,31 @@ export default function ImageGenerator({
             <span className="font-bold text-foreground">Advanced settings</span>
             <span className="text-muted-foreground">(provider · strictness · compare)</span>
             {lastProviderUsed && (
-              <span className="ml-auto">
+              <span className="ml-auto flex items-center gap-2">
+                {lastRequestedSize && (
+                  <span
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-sm border border-border bg-muted/40 text-[10px] font-display text-muted-foreground"
+                    title={
+                      lastProviderExactMatch === false
+                        ? "Provider used an approximate ratio — export pipeline will crop to exact poster size."
+                        : "Provider matched the poster aspect ratio exactly."
+                    }
+                  >
+                    {lastRequestedSize}
+                    <span
+                      className={
+                        lastProviderExactMatch === false
+                          ? "text-amber-500"
+                          : "text-emerald-500"
+                      }
+                    >
+                      ·{" "}
+                      {lastProviderExactMatch === false
+                        ? "Approximate (corrected on export)"
+                        : "Exact print ratio"}
+                    </span>
+                  </span>
+                )}
                 <RouteBadge
                   provider={lastProviderUsed}
                   model={lastModelUsed}
@@ -1079,6 +1113,16 @@ export default function ImageGenerator({
               setLastStrategyUsed(response.strategy);
               setLastExecutionRoute(response.executionRoute);
               setLastRoutingReason(response.routingReason ?? null);
+              setLastProviderExactMatch(
+                typeof response.providerExactMatch === "boolean"
+                  ? response.providerExactMatch
+                  : null,
+              );
+              setLastRequestedSize(
+                response.requestedWidth && response.requestedHeight
+                  ? `${response.requestedWidth}×${response.requestedHeight}`
+                  : response.requestedAspectRatio ?? null,
+              );
               setSavedToGallery(false);
               resetUpscale();
               setEnhancedImageUrl(null);
