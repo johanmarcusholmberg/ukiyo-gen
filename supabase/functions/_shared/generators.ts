@@ -12,7 +12,7 @@ import {
   type Strictness,
 } from "./style-meta.ts";
 import { STYLE_RULES } from "./prompt-compiler.ts";
-import { sdxlSizeForFormat } from "./provider-sizing.ts";
+import { sdxlSizeForFormat, geminiAspectForFormat } from "./provider-sizing.ts";
 
 export type ResolvedProviderId = "gemini" | "sdxl";
 export type GeneratorPreference = "auto" | ResolvedProviderId;
@@ -24,6 +24,16 @@ export interface ProviderResult {
   width?: number;
   height?: number;
   warnings?: string[];
+  /** Provider-side requested width (pixels). */
+  requestedWidth?: number;
+  /** Provider-side requested height (pixels). */
+  requestedHeight?: number;
+  /** Provider-side requested aspect ratio token (e.g. "3:4"). */
+  requestedAspectRatio?: string;
+  /** True when the provider ran at the exact poster aspect ratio. */
+  providerExactMatch?: boolean;
+  /** True when the provider used an approximate ratio (export must crop). */
+  providerAdjusted?: boolean;
 }
 
 export interface GenerateArgs {
