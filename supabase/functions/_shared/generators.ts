@@ -262,6 +262,11 @@ export async function generateWithSDXL(args: GenerateArgs): Promise<ProviderResu
     modelId: "stability-ai/sdxl",
     width,
     height,
+    requestedWidth: width,
+    requestedHeight: height,
+    requestedAspectRatio: args.aspectRatio,
+    providerExactMatch: sized.exact,
+    providerAdjusted: !sized.exact,
   };
 }
 
