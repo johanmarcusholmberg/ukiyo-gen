@@ -142,6 +142,8 @@ export default function ImageGenerator({
   const [lastStrategyUsed, setLastStrategyUsed] = useState<"auto" | "manual" | null>(null);
   const [lastExecutionRoute, setLastExecutionRoute] = useState<string | null>(null);
   const [lastRoutingReason, setLastRoutingReason] = useState<string | null>(null);
+  const [lastProviderExactMatch, setLastProviderExactMatch] = useState<boolean | null>(null);
+  const [lastRequestedSize, setLastRequestedSize] = useState<string | null>(null);
   const [compareOpen, setCompareOpen] = useState(false);
   // Poster Composer integration (additive — does not change the generator).
   // The user can configure template + text BEFORE generation. After the
