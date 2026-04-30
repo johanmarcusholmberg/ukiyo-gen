@@ -106,7 +106,7 @@ serve(async (req) => {
     console.log(
       `[direct-openai] style=${styleKey} category=${compiled.category} ` +
         `prompt_len=${compiledPrompt.length} size=${size} sizeSource=${sized.source} ` +
-        `posterFormatId=${posterFormatId ?? "none"} quality=${quality ?? "high"}`,
+        `exact=${sized.exact} posterFormatId=${posterFormatId ?? "none"} quality=${quality ?? "high"}`,
     );
 
     const res = await fetch("https://api.openai.com/v1/images/generations", {
