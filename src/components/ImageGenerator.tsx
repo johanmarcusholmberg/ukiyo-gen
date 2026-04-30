@@ -1089,6 +1089,16 @@ export default function ImageGenerator({
               setLastStrategyUsed(response.strategy);
               setLastExecutionRoute(response.executionRoute);
               setLastRoutingReason(response.routingReason ?? null);
+              setLastProviderExactMatch(
+                typeof response.providerExactMatch === "boolean"
+                  ? response.providerExactMatch
+                  : null,
+              );
+              setLastRequestedSize(
+                response.requestedWidth && response.requestedHeight
+                  ? `${response.requestedWidth}×${response.requestedHeight}`
+                  : response.requestedAspectRatio ?? null,
+              );
               setSavedToGallery(false);
               resetUpscale();
               setEnhancedImageUrl(null);
