@@ -117,12 +117,24 @@ function snap(n: number, mult = 8): number {
 export function sdxlSizeForFormat(
   posterFormatId?: string,
   aspectRatio?: string,
-): { width: number; height: number; source: "format" | "aspect" | "default" } {
+): {
+  width: number;
+  height: number;
+  source: "map" | "format" | "aspect" | "default";
+  exact: boolean;
+} {
+  // 1. Hard map (preferred — single source of truth)
+  const mapped = getProviderSizeFromMap("sdxl", posterFormatId);
+  if (mapped) {
+    return { width: mapped.width, height: mapped.height, source: "map", exact: mapped.exact };
+  }
+
+  // 2. Fallback: derive from format / aspect-ratio (legacy heuristic)
   const format = getPrintFormat(posterFormatId);
   const ratio = format?.aspectRatioDecimal ?? aspectRatioToDecimal(aspectRatio);
 
   if (!ratio) {
-    return { width: 1024, height: 1024, source: "default" };
+    return { width: 1024, height: 1024, source: "default", exact: false };
   }
 
   const LONG_SIDE_TARGET = 1344;
@@ -130,19 +142,19 @@ export function sdxlSizeForFormat(
 
   let width: number, height: number;
   if (ratio >= 1) {
-    // landscape or square
     width = LONG_SIDE_TARGET;
     height = Math.max(SHORT_SIDE_FLOOR, Math.round(LONG_SIDE_TARGET / ratio));
   } else {
-    // portrait
     height = LONG_SIDE_TARGET;
     width = Math.max(SHORT_SIDE_FLOOR, Math.round(LONG_SIDE_TARGET * ratio));
   }
 
+  const snapped = { width: snap(width), height: snap(height) };
+  // Heuristic dimensions are approximate by definition.
   return {
-    width: snap(width),
-    height: snap(height),
+    ...snapped,
     source: format ? "format" : "aspect",
+    exact: false,
   };
 }
 
