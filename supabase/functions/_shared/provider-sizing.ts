@@ -53,6 +53,55 @@ function aspectRatioToDecimal(aspectRatio?: string): number | undefined {
   return a / b;
 }
 
+// ── Provider size map (mirrors src/lib/provider-size-map.ts) ────────────
+//
+// Hard-coded per-format request dimensions for each provider. Keep in sync
+// with the frontend file. `exact` records whether the dimensions match the
+// poster's aspect ratio perfectly; when false, the export pipeline is
+// expected to re-crop to the exact ratio.
+
+const PROVIDER_SIZE_MAP = {
+  sdxl: {
+    print_30x40: { width: 1024, height: 1344, exact: false },
+    print_50x70: { width: 1344, height: 1888, exact: true },
+    print_50x50: { width: 1024, height: 1024, exact: true },
+    print_a2: { width: 1408, height: 1984, exact: false },
+    print_a3: { width: 1408, height: 1984, exact: false },
+    print_a4: { width: 1408, height: 1984, exact: false },
+  } as Record<string, { width: number; height: number; exact: boolean }>,
+  openai: {
+    print_30x40: { size: "1024x1536", exact: false },
+    print_50x70: { size: "1024x1536", exact: false },
+    print_50x50: { size: "1024x1024", exact: true },
+    print_a2: { size: "1024x1536", exact: false },
+    print_a3: { size: "1024x1536", exact: false },
+    print_a4: { size: "1024x1536", exact: false },
+  } as Record<string, { size: "1024x1024" | "1024x1536" | "1536x1024"; exact: boolean }>,
+  gemini: {
+    print_30x40: { aspectRatio: "3:4", exact: true },
+    print_50x70: { aspectRatio: "3:4", exact: false },
+    print_50x50: { aspectRatio: "1:1", exact: true },
+    print_a2: { aspectRatio: "2:3", exact: false },
+    print_a3: { aspectRatio: "2:3", exact: false },
+    print_a4: { aspectRatio: "2:3", exact: false },
+  } as Record<string, { aspectRatio: string; exact: boolean }>,
+};
+
+export function getProviderSizeFromMap<T extends "sdxl" | "openai" | "gemini">(
+  provider: T,
+  posterFormatId?: string,
+):
+  | (T extends "sdxl" ? { width: number; height: number; exact: boolean } : never)
+  | (T extends "openai" ? { size: "1024x1024" | "1024x1536" | "1536x1024"; exact: boolean } : never)
+  | (T extends "gemini" ? { aspectRatio: string; exact: boolean } : never)
+  | null {
+  if (!posterFormatId) return null;
+  // deno-lint-ignore no-explicit-any
+  const map = (PROVIDER_SIZE_MAP as any)[provider];
+  if (!map) return null;
+  return map[posterFormatId] ?? null;
+}
+
 // ── SDXL ────────────────────────────────────────────────────────────────
 
 /** Snap to a multiple of `mult` (SDXL requires multiples of 8). */
