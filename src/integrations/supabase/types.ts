@@ -14,6 +14,62 @@ export type Database = {
   }
   public: {
     Tables: {
+      audit_log: {
+        Row: {
+          action: string
+          created_at: string
+          id: string
+          metadata: Json
+          performed_by: string | null
+          target_user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          id?: string
+          metadata?: Json
+          performed_by?: string | null
+          target_user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          id?: string
+          metadata?: Json
+          performed_by?: string | null
+          target_user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_log_performed_by_fkey"
+            columns: ["performed_by"]
+            isOneToOne: false
+            referencedRelation: "admin_user_overview"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "audit_log_performed_by_fkey"
+            columns: ["performed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "audit_log_target_user_id_fkey"
+            columns: ["target_user_id"]
+            isOneToOne: false
+            referencedRelation: "admin_user_overview"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "audit_log_target_user_id_fkey"
+            columns: ["target_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       collection_images: {
         Row: {
           added_at: string
@@ -347,6 +403,69 @@ export type Database = {
         }
         Relationships: []
       }
+      profiles: {
+        Row: {
+          auth_user_id: string | null
+          created_at: string
+          created_by: string | null
+          display_name: string | null
+          email: string
+          id: string
+          is_protected: boolean
+          last_login_at: string | null
+          notes: string | null
+          provider: Database["public"]["Enums"]["auth_provider"]
+          status: Database["public"]["Enums"]["profile_status"]
+          updated_at: string
+          username: string | null
+        }
+        Insert: {
+          auth_user_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          display_name?: string | null
+          email: string
+          id?: string
+          is_protected?: boolean
+          last_login_at?: string | null
+          notes?: string | null
+          provider?: Database["public"]["Enums"]["auth_provider"]
+          status?: Database["public"]["Enums"]["profile_status"]
+          updated_at?: string
+          username?: string | null
+        }
+        Update: {
+          auth_user_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          display_name?: string | null
+          email?: string
+          id?: string
+          is_protected?: boolean
+          last_login_at?: string | null
+          notes?: string | null
+          provider?: Database["public"]["Enums"]["auth_provider"]
+          status?: Database["public"]["Enums"]["profile_status"]
+          updated_at?: string
+          username?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profiles_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "admin_user_overview"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profiles_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       upscale_jobs: {
         Row: {
           created_at: string
@@ -412,15 +531,128 @@ export type Database = {
           },
         ]
       }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_roles_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "admin_user_overview"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_roles_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
-      [_ in never]: never
+      admin_user_overview: {
+        Row: {
+          auth_user_id: string | null
+          created_at: string | null
+          created_by: string | null
+          display_name: string | null
+          email: string | null
+          id: string | null
+          is_protected: boolean | null
+          last_login_at: string | null
+          notes: string | null
+          provider: Database["public"]["Enums"]["auth_provider"] | null
+          roles: string[] | null
+          status: Database["public"]["Enums"]["profile_status"] | null
+          updated_at: string | null
+          username: string | null
+        }
+        Insert: {
+          auth_user_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          display_name?: string | null
+          email?: string | null
+          id?: string | null
+          is_protected?: boolean | null
+          last_login_at?: string | null
+          notes?: string | null
+          provider?: Database["public"]["Enums"]["auth_provider"] | null
+          roles?: never
+          status?: Database["public"]["Enums"]["profile_status"] | null
+          updated_at?: string | null
+          username?: string | null
+        }
+        Update: {
+          auth_user_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          display_name?: string | null
+          email?: string | null
+          id?: string | null
+          is_protected?: boolean | null
+          last_login_at?: string | null
+          notes?: string | null
+          provider?: Database["public"]["Enums"]["auth_provider"] | null
+          roles?: never
+          status?: Database["public"]["Enums"]["profile_status"] | null
+          updated_at?: string | null
+          username?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profiles_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "admin_user_overview"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profiles_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       cleanup_old_deleted_images: { Args: never; Returns: undefined }
+      current_profile_id: { Args: never; Returns: string }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_profile_id: string
+        }
+        Returns: boolean
+      }
+      is_current_user_active: { Args: never; Returns: boolean }
+      is_current_user_admin: { Args: never; Returns: boolean }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "user"
+      auth_provider: "password" | "google" | "mixed"
+      profile_status: "active" | "disabled" | "pending"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -547,6 +779,10 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "user"],
+      auth_provider: ["password", "google", "mixed"],
+      profile_status: ["active", "disabled", "pending"],
+    },
   },
 } as const
