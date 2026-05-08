@@ -70,6 +70,7 @@ const App = () => (
               {/* Admin */}
               <Route path="/admin" element={protect(<AdminUsers />, true)} />
               <Route path="/admin/users" element={protect(<AdminUsers />, true)} />
+              <Route path="/admin/assets" element={protect(<AdminAssets />, true)} />
 
               {/* Generators (protected) */}
               <Route path="/" element={protect(<Index />)} />
