@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { LogOut, Shield, User as UserIcon, Users } from "lucide-react";
+import { Image as ImageIcon, LogOut, Shield, User as UserIcon, Users } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
 export default function UserMenu() {
@@ -64,6 +64,13 @@ export default function UserMenu() {
             <DropdownMenuItem asChild>
               <Link to="/admin/users" className="cursor-pointer">
                 <Users className="h-4 w-4 mr-2" /> User management
+              </Link>
+            </DropdownMenuItem>
+          )}
+          {role === "admin" && (
+            <DropdownMenuItem asChild>
+              <Link to="/admin/assets" className="cursor-pointer">
+                <ImageIcon className="h-4 w-4 mr-2" /> Asset library
               </Link>
             </DropdownMenuItem>
           )}
