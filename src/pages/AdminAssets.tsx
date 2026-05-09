@@ -216,7 +216,10 @@ export default function AdminAssets() {
         (r) => (r.generation_provider || r.execution_route) === providerFilter,
       );
     }
-    if (statusFilter !== "all") {
+    if (statusFilter === "all") {
+      // Hide archived by default — admin must explicitly filter to "Archived" to see them.
+      out = out.filter((r) => (r.admin_status || "draft") !== "archived");
+    } else {
       out = out.filter((r) => (r.admin_status || "draft") === statusFilter);
     }
     if (hasUpscaledFilter === "yes") {
