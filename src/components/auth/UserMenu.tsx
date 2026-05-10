@@ -29,14 +29,13 @@ export default function UserMenu() {
     .join("");
 
   return (
-    <div className="fixed top-3 right-3 z-50">
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            variant="outline"
-            size="sm"
-            className="gap-2 bg-background/80 backdrop-blur-sm"
-          >
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="gap-2 h-9 px-2"
+        >
             <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-primary text-primary-foreground text-[10px] font-semibold">
               {initials || "?"}
             </span>
