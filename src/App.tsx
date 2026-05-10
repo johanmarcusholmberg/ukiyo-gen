@@ -51,7 +51,7 @@ const App = () => (
         <BrowserRouter>
           <AuthProvider>
             <BatchNotifications />
-            <GlobalUserMenu />
+            
             <Routes>
               {/* Public auth routes */}
               <Route path="/login" element={<Login />} />
