@@ -84,8 +84,7 @@ export default function UserMenu() {
           <DropdownMenuItem onClick={signOut} className="cursor-pointer">
             <LogOut className="h-4 w-4 mr-2" /> Sign out
           </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </div>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
