@@ -1,6 +1,6 @@
 /**
- * Small floating user-menu shown in the top-right of every protected page.
- * Lives outside the existing per-page layouts so we don't touch generator code.
+ * Inline user-menu rendered inside the global app header (StyleNav).
+ * No fixed/absolute positioning — flows as a normal flex child.
  */
 import { Link } from "react-router-dom";
 import {
