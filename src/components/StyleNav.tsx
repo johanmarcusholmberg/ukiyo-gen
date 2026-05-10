@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
+import UserMenu from "@/components/auth/UserMenu";
 import SelectedStyleCard from "./SelectedStyleCard";
 import { getStyleByRoute } from "@/lib/style-catalog";
 
