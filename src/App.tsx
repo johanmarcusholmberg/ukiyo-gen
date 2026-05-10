@@ -37,12 +37,6 @@ import StyleControlPanel from "./pages/StyleControlPanel";
 
 const queryClient = new QueryClient();
 
-/** Renders the floating user menu only when authenticated. */
-const GlobalUserMenu = () => {
-  const { access } = useAuth();
-  if (access.kind !== "active") return null;
-  return <UserMenu />;
-};
 
 const protect = (node: React.ReactNode, adminOnly = false) => (
   <RequireAuth adminOnly={adminOnly}>{node}</RequireAuth>
