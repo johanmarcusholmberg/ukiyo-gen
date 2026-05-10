@@ -1111,9 +1111,11 @@ function AssetDetail({
     let hasGenEvent = false;
     let hasUpscaleEvent = false;
     events.forEach((e) => {
-      if (typeof e.estimated_cost === "number") sum += Number(e.estimated_cost);
-      if (e.event_type === "generation") hasGenEvent = true;
-      if (e.event_type === "upscale") hasUpscaleEvent = true;
+      if (e.status === "succeeded" && typeof e.estimated_cost === "number") {
+        sum += Number(e.estimated_cost);
+      }
+      if (e.event_type === "generation" && e.status === "succeeded") hasGenEvent = true;
+      if (e.event_type === "upscale" && e.status === "succeeded") hasUpscaleEvent = true;
     });
     return { sum, hasGenEvent, hasUpscaleEvent };
   }, [events]);
