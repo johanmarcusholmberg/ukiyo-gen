@@ -1037,7 +1037,7 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-5">
           {paginated.map((img) => (
-            <div key={img.id} className="relative group">
+            <div key={img.id} className="relative group space-y-1.5">
               <button
                 onClick={() => selectMode ? toggleSelect(img.id) : setSelected(img)}
                 className="relative overflow-hidden rounded-sm border border-border bg-card hover:border-primary transition-all duration-200 hover:shadow-lg block w-full cursor-pointer aspect-square"
@@ -1062,6 +1062,20 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
                   {img.mode === "japanese" ? "🏯" : "🎨"}
                 </Badge>
               </button>
+              <AssetMetaBadges
+                variant="compact"
+                assetRole={(img as any).asset_role || ((img as any).enhanced ? "enhanced_master" : "base_generation")}
+                printReadiness={
+                  ((img as any).print_readiness as any) ||
+                  classifyPrintReadiness(
+                    (img as any).master_width || (img as any).actual_width_px,
+                    (img as any).master_height || (img as any).actual_height_px,
+                    (img as any).print_format_id,
+                  )
+                }
+                masterWidth={(img as any).master_width || (img as any).actual_width_px}
+                masterHeight={(img as any).master_height || (img as any).actual_height_px}
+              />
             </div>
           ))}
         </div>
