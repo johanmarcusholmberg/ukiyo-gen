@@ -41,6 +41,8 @@ import {
 } from "@/lib/image-assets";
 import { describeExportSource } from "@/lib/asset-selection";
 import AssetStatusBadges from "@/components/AssetStatusBadges";
+import AssetMetaBadges from "@/components/AssetMetaBadges";
+import { classifyPrintReadiness } from "@/lib/image-metadata";
 import EnhanceForPrintDialog from "@/components/EnhanceForPrintDialog";
 import PrintQualityIndicator from "@/components/PrintQualityIndicator";
 import { useUpscale } from "@/hooks/use-upscale";
