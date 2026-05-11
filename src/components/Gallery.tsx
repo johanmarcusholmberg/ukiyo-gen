@@ -41,6 +41,8 @@ import {
 } from "@/lib/image-assets";
 import { describeExportSource } from "@/lib/asset-selection";
 import AssetStatusBadges from "@/components/AssetStatusBadges";
+import AssetMetaBadges from "@/components/AssetMetaBadges";
+import { classifyPrintReadiness } from "@/lib/image-metadata";
 import EnhanceForPrintDialog from "@/components/EnhanceForPrintDialog";
 import PrintQualityIndicator from "@/components/PrintQualityIndicator";
 import { useUpscale } from "@/hooks/use-upscale";
@@ -260,6 +262,34 @@ function LightboxContent({
                 : "idle"
           }
         />
+
+        {/* Full asset metadata (Part E badges) */}
+        <div className="rounded-sm border border-border bg-card/50 p-3">
+          <AssetMetaBadges
+            variant="full"
+            provider={(img as any).provider || (img as any).generation_provider}
+            model={(img as any).model || (img as any).generation_model}
+            route={(img as any).route || (img as any).execution_route}
+            assetRole={(img as any).asset_role || ((img as any).enhanced ? "enhanced_master" : "base_generation")}
+            baseWidth={(img as any).base_width_px}
+            baseHeight={(img as any).base_height_px}
+            masterWidth={(img as any).master_width || (img as any).enhanced_width_px || (img as any).actual_width_px}
+            masterHeight={(img as any).master_height || (img as any).enhanced_height_px || (img as any).actual_height_px}
+            exportWidth={(img as any).export_width}
+            exportHeight={(img as any).export_height}
+            printReadiness={
+              ((img as any).print_readiness as any) ||
+              classifyPrintReadiness(
+                (img as any).master_width || (img as any).actual_width_px,
+                (img as any).master_height || (img as any).actual_height_px,
+                (img as any).print_format_id,
+              )
+            }
+            estimatedCost={(img as any).estimated_cost ?? null}
+            currency={(img as any).currency || "USD"}
+            createdAt={img.created_at}
+          />
+        </div>
 
         {/* Export source notice — surfaces "enhanced master" vs "base only" */}
         {(() => {
@@ -1037,7 +1067,7 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-5">
           {paginated.map((img) => (
-            <div key={img.id} className="relative group">
+            <div key={img.id} className="relative group space-y-1.5">
               <button
                 onClick={() => selectMode ? toggleSelect(img.id) : setSelected(img)}
                 className="relative overflow-hidden rounded-sm border border-border bg-card hover:border-primary transition-all duration-200 hover:shadow-lg block w-full cursor-pointer aspect-square"
@@ -1062,6 +1092,20 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
                   {img.mode === "japanese" ? "🏯" : "🎨"}
                 </Badge>
               </button>
+              <AssetMetaBadges
+                variant="compact"
+                assetRole={(img as any).asset_role || ((img as any).enhanced ? "enhanced_master" : "base_generation")}
+                printReadiness={
+                  ((img as any).print_readiness as any) ||
+                  classifyPrintReadiness(
+                    (img as any).master_width || (img as any).actual_width_px,
+                    (img as any).master_height || (img as any).actual_height_px,
+                    (img as any).print_format_id,
+                  )
+                }
+                masterWidth={(img as any).master_width || (img as any).actual_width_px}
+                masterHeight={(img as any).master_height || (img as any).actual_height_px}
+              />
             </div>
           ))}
         </div>

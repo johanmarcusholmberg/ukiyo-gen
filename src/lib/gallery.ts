@@ -82,6 +82,29 @@ export interface GallerySaveOptions {
   fallbackUsed?: boolean;
   /** Phase: cost-aware routing — explains where the image was generated. */
   executionRoute?: string;
+  // ── New asset-metadata fields (Part C of architecture upgrade) ───────
+  /** Logical role of the persisted asset. Defaults to "enhanced_master". */
+  assetRole?: "base_generation" | "enhanced_master" | "print_export" | "mockup_preview";
+  /** Route-level provider (e.g. "lovable"). Distinct from generationProvider. */
+  provider?: string;
+  /** Route-level model label (e.g. "google/gemini-3-pro-image-preview"). */
+  model?: string;
+  /** Route label (e.g. "lovable_gateway"). */
+  route?: string;
+  /** Estimated $ cost of the generation; null when unknown. */
+  estimatedCost?: number | null;
+  /** Currency for estimated_cost. Defaults to "USD". */
+  currency?: string;
+  /** Prompt compiler version (e.g. "v2"). */
+  promptVersion?: string;
+  /** Persisted public URLs (foundation for v2 reads). */
+  baseImageUrl?: string;
+  masterImageUrl?: string;
+  /** Master dimensions (separate from source/base). */
+  masterWidth?: number;
+  masterHeight?: number;
+  /** Classified print readiness. */
+  printReadiness?: string;
 }
 
 export async function saveToGallery(opts: GallerySaveOptions) {
@@ -136,6 +159,21 @@ export async function saveToGallery(opts: GallerySaveOptions) {
     provider_strategy: opts.providerStrategy || null,
     fallback_used: opts.fallbackUsed || false,
     execution_route: opts.executionRoute || null,
+    // ── Part C: asset metadata foundation ──
+    asset_role:
+      opts.assetRole ||
+      (enhancedPath ? "enhanced_master" : "base_generation"),
+    provider: opts.provider || null,
+    model: opts.model || null,
+    route: opts.route || null,
+    estimated_cost: opts.estimatedCost ?? null,
+    currency: opts.currency || "USD",
+    prompt_version: opts.promptVersion || null,
+    base_image_url: opts.baseImageUrl || null,
+    master_image_url: opts.masterImageUrl || null,
+    master_width: opts.masterWidth || null,
+    master_height: opts.masterHeight || null,
+    print_readiness: opts.printReadiness || null,
   } as any);
 
   if (dbError) throw dbError;
@@ -260,6 +298,21 @@ export async function replaceInGallery(
       provider_strategy: opts.providerStrategy || null,
       fallback_used: opts.fallbackUsed || false,
       execution_route: opts.executionRoute || null,
+      // ── Part C: asset metadata foundation ──
+      asset_role:
+        opts.assetRole ||
+        (enhancedPath ? "enhanced_master" : "base_generation"),
+      provider: opts.provider || null,
+      model: opts.model || null,
+      route: opts.route || null,
+      estimated_cost: opts.estimatedCost ?? null,
+      currency: opts.currency || "USD",
+      prompt_version: opts.promptVersion || null,
+      base_image_url: opts.baseImageUrl || null,
+      master_image_url: opts.masterImageUrl || null,
+      master_width: opts.masterWidth || null,
+      master_height: opts.masterHeight || null,
+      print_readiness: opts.printReadiness || null,
     } as any)
     .eq("id", opts.originalId);
 
