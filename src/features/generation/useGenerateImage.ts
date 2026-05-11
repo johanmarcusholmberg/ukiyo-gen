@@ -29,7 +29,7 @@ export function useGenerateImage(styleKey: string): UseGenerateImageResult {
       setIsLoading(true);
       setError(null);
       try {
-        const res = await generateImage({
+        const { response: res } = await generateImage({
           prompt: input.prompt,
           styleKey,
           aspectRatio: input.aspectRatio,
