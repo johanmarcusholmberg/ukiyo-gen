@@ -12,14 +12,15 @@ import type { QualityTarget } from "@/lib/print-resolution";
 export type GenerationVariant = "themed" | "freestyle" | "tertiary";
 
 export interface GenerationPanelProps {
-  mode: GenerationVariant;
+  /** Matches ImageGenerator's `mode` — a free-form string from style config. */
+  mode: string;
   styleConfig: StyleConfig;
   onImageSaved?: () => void;
   onExitEdit?: () => void;
   initialPrompt?: string;
-  initialImageUrl?: string | null;
-  originalImageId?: string | null;
-  originalStoragePath?: string | null;
+  initialImageUrl?: string;
+  originalImageId?: string;
+  originalStoragePath?: string;
 }
 
 export interface UseGenerateImageResult {
