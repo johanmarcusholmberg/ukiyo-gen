@@ -494,7 +494,48 @@ export default function ImageGenerator({
       providerStrategy: lastStrategyUsed || undefined,
       fallbackUsed: lastFallbackUsed,
       executionRoute: lastExecutionRoute || undefined,
+      // Phase 2 — v2 envelope metadata (route-level provenance + cost).
+      provider: lastRouteProvider || undefined,
+      model: lastRouteModel || undefined,
+      route: lastRouteLabel || undefined,
+      estimatedCost: lastEstimatedCost,
+      currency: lastCurrency,
+      promptVersion: lastPromptVersion || undefined,
+      assetRole: hasEnhanced ? ("enhanced_master" as const) : ("base_generation" as const),
     };
+  };
+
+  /**
+   * Best-effort dimension + readiness probe. Never throws — falls back to
+   * `unknown` print readiness so save is never blocked by a CORS or
+   * network hiccup on the dimension load.
+   */
+  const probeDimensionsAndReadiness = async (
+    baseUrl: string,
+    masterUrl: string,
+    printFormatIdForReadiness: string | null,
+  ) => {
+    let baseDims: { width: number; height: number } | null = null;
+    let masterDims: { width: number; height: number } | null = null;
+    try {
+      baseDims = await loadImageDimensions(baseUrl);
+    } catch (e) {
+      console.warn("[ImageGenerator] base dimension probe failed:", e);
+    }
+    try {
+      masterDims =
+        masterUrl === baseUrl
+          ? baseDims
+          : await loadImageDimensions(masterUrl);
+    } catch (e) {
+      console.warn("[ImageGenerator] master dimension probe failed:", e);
+    }
+    const readiness = classifyPrintReadiness(
+      masterDims?.width ?? null,
+      masterDims?.height ?? null,
+      printFormatIdForReadiness,
+    );
+    return { baseDims, masterDims, readiness };
   };
 
   const handleSaveToGallery = async () => {
@@ -505,16 +546,61 @@ export default function ImageGenerator({
         ? `${initialPrompt} | Edited: ${prompt.trim()}`
         : prompt.trim();
 
-      // Always save using baseImageUrl as the primary source
+      const baseUrlForSave = baseImageUrl || imageUrl;
+      const masterUrlForSave = enhancedImageUrl || baseUrlForSave;
+      const isPrint = generationMode === "print-ready";
+      const { baseDims, masterDims, readiness } = await probeDimensionsAndReadiness(
+        baseUrlForSave,
+        masterUrlForSave,
+        isPrint ? selectedPrintFormat.id : null,
+      );
+
       const saveOpts = buildSaveOptions();
       const result = await saveToGallery({
-        imageUrl: baseImageUrl || imageUrl,
+        imageUrl: baseUrlForSave,
         prompt: finalPrompt,
         ...saveOpts,
+        baseImageUrl: baseUrlForSave,
+        masterImageUrl: masterUrlForSave,
+        baseWidthPx: baseDims?.width,
+        baseHeightPx: baseDims?.height,
+        masterWidth: masterDims?.width,
+        masterHeight: masterDims?.height,
+        actualWidthPx: masterDims?.width ?? baseDims?.width,
+        actualHeightPx: masterDims?.height ?? baseDims?.height,
+        printReadiness: readiness,
       });
       // Note: result is the master public URL
       setSavedToGallery(true);
       onImageSaved?.();
+      // Best-effort cost-event log; never blocks save UX.
+      try {
+        const { data } = await supabase
+          .from("generated_images")
+          .select("id")
+          .order("created_at", { ascending: false })
+          .limit(1);
+        const newId = (data?.[0] as { id?: string } | undefined)?.id;
+        if (newId) {
+          await recordAssetCostEvent({
+            imageId: newId,
+            eventType: "generation",
+            provider: lastRouteProvider || "lovable",
+            model: lastRouteModel || "google/gemini-3-pro-image-preview",
+            mode,
+            estimatedCost: lastEstimatedCost,
+            currency: lastCurrency,
+            status: "succeeded",
+            metadata: {
+              route: lastRouteLabel,
+              promptVersion: lastPromptVersion,
+              executionRoute: lastExecutionRoute,
+            },
+          });
+        }
+      } catch (e) {
+        console.warn("[ImageGenerator] cost event skipped:", e);
+      }
       toast({ title: "Saved to gallery", description: "Your artwork has been saved." });
     } catch (saveErr: any) {
       console.error("Gallery save failed:", saveErr);
@@ -532,15 +618,53 @@ export default function ImageGenerator({
         ? `${initialPrompt} | Edited: ${prompt.trim()}`
         : prompt.trim();
 
+      const baseUrlForSave = baseImageUrl || imageUrl;
+      const masterUrlForSave = enhancedImageUrl || baseUrlForSave;
+      const isPrint = generationMode === "print-ready";
+      const { baseDims, masterDims, readiness } = await probeDimensionsAndReadiness(
+        baseUrlForSave,
+        masterUrlForSave,
+        isPrint ? selectedPrintFormat.id : null,
+      );
+
       await replaceInGallery({
         originalId: originalImageId,
         originalStoragePath,
-        imageUrl: baseImageUrl || imageUrl,
+        imageUrl: baseUrlForSave,
         prompt: finalPrompt,
         ...buildSaveOptions(),
+        baseImageUrl: baseUrlForSave,
+        masterImageUrl: masterUrlForSave,
+        baseWidthPx: baseDims?.width,
+        baseHeightPx: baseDims?.height,
+        masterWidth: masterDims?.width,
+        masterHeight: masterDims?.height,
+        actualWidthPx: masterDims?.width ?? baseDims?.width,
+        actualHeightPx: masterDims?.height ?? baseDims?.height,
+        printReadiness: readiness,
       });
       setSavedToGallery(true);
       onImageSaved?.();
+      try {
+        await recordAssetCostEvent({
+          imageId: originalImageId,
+          eventType: "generation",
+          provider: lastRouteProvider || "lovable",
+          model: lastRouteModel || "google/gemini-3-pro-image-preview",
+          mode,
+          estimatedCost: lastEstimatedCost,
+          currency: lastCurrency,
+          status: "succeeded",
+          metadata: {
+            route: lastRouteLabel,
+            promptVersion: lastPromptVersion,
+            executionRoute: lastExecutionRoute,
+            replacement: true,
+          },
+        });
+      } catch (e) {
+        console.warn("[ImageGenerator] cost event skipped:", e);
+      }
       toast({ title: "Original replaced", description: "The gallery image has been updated." });
     } catch (err: any) {
       console.error("Replace failed:", err);
