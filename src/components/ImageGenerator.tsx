@@ -144,6 +144,16 @@ export default function ImageGenerator({
   const [lastRoutingReason, setLastRoutingReason] = useState<string | null>(null);
   const [lastProviderExactMatch, setLastProviderExactMatch] = useState<boolean | null>(null);
   const [lastRequestedSize, setLastRequestedSize] = useState<string | null>(null);
+  // ── Phase 2: route-level v2 metadata (provider/model/route + cost). These
+  // come from the generate-image-v2 envelope (via the lovable adapter's
+  // metadata blob). They are persisted on save so the gallery can show
+  // accurate provenance + cost badges.
+  const [lastRouteProvider, setLastRouteProvider] = useState<string | null>(null);
+  const [lastRouteModel, setLastRouteModel] = useState<string | null>(null);
+  const [lastRouteLabel, setLastRouteLabel] = useState<string | null>(null);
+  const [lastEstimatedCost, setLastEstimatedCost] = useState<number | null>(null);
+  const [lastCurrency, setLastCurrency] = useState<string>("USD");
+  const [lastPromptVersion, setLastPromptVersion] = useState<string | null>(null);
   const [compareOpen, setCompareOpen] = useState(false);
   // Poster Composer integration (additive — does not change the generator).
   // The user can configure template + text BEFORE generation. After the
