@@ -1434,16 +1434,13 @@ export default function ImageGenerator({
                   ))}
                 </div>
               )}
-              <Button variant="outline" size="sm"
-                onClick={() => downloadImage(
-                  viewVersion === "original" && hasEnhanced ? baseImageUrl! : imageUrl,
-                  `${styleConfig.downloadPrefix}-${mode}-${effectiveAspectRatio.replace(":", "x")}-${Date.now()}.png`
-                )}
-                className="font-display text-xs tracking-wider">
-                <Download className="mr-2 h-4 w-4" />
-                Download{hasEnhanced ? (viewVersion === "original" ? " (Original)" : " (Enhanced)") : ""}{" "}
-                ({generationMode === "print-ready" ? selectedPrintFormat.label : printSize.dimensions})
-              </Button>
+              <DownloadButton
+                url={viewVersion === "original" && hasEnhanced ? baseImageUrl! : imageUrl}
+                filename={`${styleConfig.downloadPrefix}-${mode}-${effectiveAspectRatio.replace(":", "x")}-${Date.now()}.png`}
+                versionLabel={hasEnhanced ? (viewVersion === "original" ? "Original" : "Enhanced") : undefined}
+                sizeLabel={generationMode === "print-ready" ? selectedPrintFormat.label : printSize.dimensions}
+              />
+
               {generationMode === "print-ready" && (
                 <Button variant="outline" size="sm" onClick={handlePrintExport} disabled={exporting}
                   className="font-display text-xs tracking-wider border-primary/30 text-primary hover:bg-primary/10">
