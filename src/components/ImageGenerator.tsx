@@ -872,6 +872,7 @@ export default function ImageGenerator({
             </button>
           </div>
         </div>
+        )}
 
         {/* ── Poster card — single source of truth for size ──────────── */}
         <div className="rounded-md border border-border bg-card/60 p-4 space-y-3">
