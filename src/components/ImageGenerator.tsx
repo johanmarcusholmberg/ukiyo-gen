@@ -303,7 +303,7 @@ export default function ImageGenerator({
       // the hood — current backend behavior (prompt compilation,
       // SDXL/Gemini resolver, fallback) is unchanged.
       const referenceImageUrl =
-        isInlineEditing && imageUrl ? imageUrl : sourceImageUrl || undefined;
+        isInlineEditing && imageUrl ? imageUrl : effectiveSourceImageUrl || undefined;
 
       const { generateImage } = await import("@/lib/generation-router");
       // Resolve effective strictness from the Style Control Panel.
