@@ -8,8 +8,7 @@
  * globally in App.tsx and overlays the right side of this header.
  */
 import { Link, useNavigate } from "react-router-dom";
-import { useTheme } from "next-themes";
-import { Sun, Moon, Menu } from "lucide-react";
+import { Menu } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -60,7 +59,6 @@ const isActive = (link: NavLink, activePath: string): boolean => {
 };
 
 const StyleNav = ({ activePath }: StyleNavProps) => {
-  const { theme, setTheme } = useTheme();
   const navigate = useNavigate();
   const { access } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -146,16 +144,7 @@ const StyleNav = ({ activePath }: StyleNavProps) => {
             {secondaryLinks.map(renderLink)}
           </nav>
 
-          {/* Dark mode toggle */}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-            className="h-8 w-8 p-0 shrink-0 text-muted-foreground hover:text-foreground"
-            title="Toggle dark mode"
-          >
-            {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-          </Button>
+          {/* Dark mode toggle removed — light-only experience. */}
 
           {/* User / account menu (inline, not floating) */}
           <div className="ml-1 shrink-0">

@@ -36,6 +36,7 @@ import { saveToGallery, replaceInGallery } from "@/lib/gallery";
 import { loadImageDimensions, classifyPrintReadiness } from "@/lib/image-metadata";
 import { recordAssetCostEvent } from "@/lib/cost-events";
 import DownloadButton from "@/components/generation/DownloadButton";
+import UploadedImageInput, { type UploadedSource } from "@/components/generation/UploadedImageInput";
 import ImagePreviewMockups from "@/components/ImagePreviewMockups";
 import type { StyleConfig } from "@/lib/style-config";
 import { type QualityTarget, getResolutionForPrintSize, formatResolution } from "@/lib/print-resolution";
@@ -119,6 +120,10 @@ export default function ImageGenerator({
   } = usePersistedGeneration(persistKey, isEditMode ? undefined : initialPrompt);
 
   const [sourceImageUrl] = useState<string | null>(initialImageUrl || null);
+  // User-uploaded source image (non-edit mode). Treated as sourceImageUrl
+  // when present so the existing edit/source pipeline is reused.
+  const [uploadedSource, setUploadedSource] = useState<UploadedSource | null>(null);
+  const effectiveSourceImageUrl = sourceImageUrl || uploadedSource?.url || null;
   // Store the enhanced URL separately from the displayed imageUrl
   const [enhancedImageUrl, setEnhancedImageUrl] = useState<string | null>(null);
   const [isInlineEditing, setIsInlineEditing] = useState(false);
@@ -298,7 +303,7 @@ export default function ImageGenerator({
       // the hood — current backend behavior (prompt compilation,
       // SDXL/Gemini resolver, fallback) is unchanged.
       const referenceImageUrl =
-        isInlineEditing && imageUrl ? imageUrl : sourceImageUrl || undefined;
+        isInlineEditing && imageUrl ? imageUrl : effectiveSourceImageUrl || undefined;
 
       const { generateImage } = await import("@/lib/generation-router");
       // Resolve effective strictness from the Style Control Panel.
@@ -827,7 +832,18 @@ export default function ImageGenerator({
             "Enhance for print" button appears next to the generated image
             once it's available (see action row below). */}
 
+        {/* Upload source image — optional, lets the user run the prompt
+            against a reference image (reuses the edit/source pipeline). */}
+        {!isEditMode && (
+          <UploadedImageInput
+            value={uploadedSource}
+            onChange={setUploadedSource}
+            disabled={loading}
+          />
+        )}
+
         {/* ── Generation Mode (simplified) ───────────────────────────── */}
+        {false && (
         <div className="flex items-center gap-2">
           <span className="font-display text-[11px] uppercase tracking-wider text-muted-foreground">Mode:</span>
           <div className="inline-flex items-center gap-1 border border-border rounded-sm p-0.5 bg-card/40">
@@ -856,7 +872,10 @@ export default function ImageGenerator({
             </button>
           </div>
         </div>
+        )}
 
+        {false && (
+        <>
         {/* ── Poster card — single source of truth for size ──────────── */}
         <div className="rounded-md border border-border bg-card/60 p-4 space-y-3">
           <div className="flex items-baseline justify-between">
@@ -960,6 +979,9 @@ export default function ImageGenerator({
           </div>
         </div>
 
+        </>
+        )}
+
         {/* ── Artwork card (compact) ─────────────────────────────────── */}
         <div className="rounded-md border border-border bg-card/60 p-3 space-y-2">
           <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -1024,6 +1046,7 @@ export default function ImageGenerator({
         </div>
 
         {/* ── Poster setup (optional, secondary) ─────────────────────── */}
+        {false && (
         <details className="group">
           <summary className="cursor-pointer select-none px-1 py-1 flex items-center gap-2 font-display text-xs">
             <LayoutPanelTop className="h-3.5 w-3.5 text-primary" />
@@ -1156,6 +1179,7 @@ export default function ImageGenerator({
             </div>
           </div>
         </details>
+        )}
 
         {/* ── Advanced settings (provider/debug controls) ────────────── */}
         <details className="group">
@@ -1255,8 +1279,8 @@ export default function ImageGenerator({
               referenceImageUrl:
                 isInlineEditing && imageUrl
                   ? imageUrl
-                  : sourceImageUrl || undefined,
-              isEdit: !!(isInlineEditing && imageUrl) || !!sourceImageUrl,
+                  : effectiveSourceImageUrl || undefined,
+              isEdit: !!(isInlineEditing && imageUrl) || !!effectiveSourceImageUrl,
             }}
             adapters={[
               { id: "replicate", label: "SDXL (direct Replicate)" },
