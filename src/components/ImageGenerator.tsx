@@ -120,6 +120,10 @@ export default function ImageGenerator({
   } = usePersistedGeneration(persistKey, isEditMode ? undefined : initialPrompt);
 
   const [sourceImageUrl] = useState<string | null>(initialImageUrl || null);
+  // User-uploaded source image (non-edit mode). Treated as sourceImageUrl
+  // when present so the existing edit/source pipeline is reused.
+  const [uploadedSource, setUploadedSource] = useState<UploadedSource | null>(null);
+  const effectiveSourceImageUrl = sourceImageUrl || uploadedSource?.url || null;
   // Store the enhanced URL separately from the displayed imageUrl
   const [enhancedImageUrl, setEnhancedImageUrl] = useState<string | null>(null);
   const [isInlineEditing, setIsInlineEditing] = useState(false);
