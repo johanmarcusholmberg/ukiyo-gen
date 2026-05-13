@@ -180,6 +180,9 @@ export async function saveToGallery(opts: GallerySaveOptions) {
     master_width: opts.masterWidth || null,
     master_height: opts.masterHeight || null,
     print_readiness: opts.printReadiness || null,
+    source_image_url: opts.sourceImageUrl || null,
+    source_storage_path: opts.sourceStoragePath || null,
+    source_file_name: opts.sourceFileName || null,
   } as any);
 
   if (dbError) throw dbError;
