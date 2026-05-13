@@ -1046,6 +1046,7 @@ export default function ImageGenerator({
         </div>
 
         {/* ── Poster setup (optional, secondary) ─────────────────────── */}
+        {false && (
         <details className="group">
           <summary className="cursor-pointer select-none px-1 py-1 flex items-center gap-2 font-display text-xs">
             <LayoutPanelTop className="h-3.5 w-3.5 text-primary" />
