@@ -8,8 +8,7 @@
  * globally in App.tsx and overlays the right side of this header.
  */
 import { Link, useNavigate } from "react-router-dom";
-import { useTheme } from "next-themes";
-import { Sun, Moon, Menu } from "lucide-react";
+import { Menu } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
