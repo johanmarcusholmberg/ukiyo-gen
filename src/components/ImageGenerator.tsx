@@ -874,6 +874,8 @@ export default function ImageGenerator({
         </div>
         )}
 
+        {false && (
+        <>
         {/* ── Poster card — single source of truth for size ──────────── */}
         <div className="rounded-md border border-border bg-card/60 p-4 space-y-3">
           <div className="flex items-baseline justify-between">
