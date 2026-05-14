@@ -53,6 +53,7 @@ import { Progress } from "@/components/ui/progress";
 import EtsyExportDialog from "@/components/EtsyExportDialog";
 import EtsyMockupDialog from "@/components/EtsyMockupDialog";
 import RouteBadge from "@/components/RouteBadge";
+import ImportArtworkButton from "@/components/gallery/ImportArtworkButton";
 
 interface GalleryImage {
   id: string;
@@ -553,13 +554,16 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
     ? [styleConfig.themedModeValue, styleConfig.freestyleModeValue, ...(styleConfig.tertiaryModeValue ? [styleConfig.tertiaryModeValue] : [])]
     : null;
 
+  const [reloadTick, setReloadTick] = useState(0);
+  const reloadGallery = useCallback(() => setReloadTick((t) => t + 1), []);
+
   useEffect(() => {
     setLoading(true);
     fetchGalleryImages()
       .then((imgs) => setImages(styleModes ? imgs.filter((img: any) => styleModes.includes(img.mode)) : imgs))
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, [refreshKey]);
+  }, [refreshKey, reloadTick]);
 
   // Load all collections for bulk actions
   useEffect(() => {
@@ -1014,6 +1018,8 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
           {selectMode ? <CheckSquare className="h-3 w-3 mr-1" /> : <Square className="h-3 w-3 mr-1" />}
           Select
         </Button>
+
+        <ImportArtworkButton onImported={reloadGallery} />
 
         {selectMode && selectedIds.size > 0 && (
           <>
