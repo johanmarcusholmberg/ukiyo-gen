@@ -553,13 +553,16 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
     ? [styleConfig.themedModeValue, styleConfig.freestyleModeValue, ...(styleConfig.tertiaryModeValue ? [styleConfig.tertiaryModeValue] : [])]
     : null;
 
+  const [reloadTick, setReloadTick] = useState(0);
+  const reloadGallery = useCallback(() => setReloadTick((t) => t + 1), []);
+
   useEffect(() => {
     setLoading(true);
     fetchGalleryImages()
       .then((imgs) => setImages(styleModes ? imgs.filter((img: any) => styleModes.includes(img.mode)) : imgs))
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, [refreshKey]);
+  }, [refreshKey, reloadTick]);
 
   // Load all collections for bulk actions
   useEffect(() => {
