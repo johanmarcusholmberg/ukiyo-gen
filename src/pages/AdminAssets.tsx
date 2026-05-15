@@ -2,7 +2,7 @@
  * /admin/assets — Admin Asset Library.
  * Admin-only management view for ALL persisted image assets.
  */
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { Link } from "react-router-dom";
 import {
   ArrowLeft,
