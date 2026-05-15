@@ -1404,6 +1404,10 @@ function AssetDetail({
                     {readiness.recommendation}
                   </div>
                 )}
+                <div className="text-[11px] text-muted-foreground/80 mt-1 italic">
+                  Print readiness is based on dimensions/PPI. Compare original
+                  and enhanced versions visually before final print.
+                </div>
               </span>
             }
           />
