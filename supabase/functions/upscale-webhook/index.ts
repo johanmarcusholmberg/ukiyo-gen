@@ -262,6 +262,21 @@ Deno.serve(async (req) => {
           finished_at: new Date().toISOString(),
         })
         .eq("id", jobToken);
+      if (job.image_id) {
+        const pipeline = (job.pipeline as Record<string, unknown>) || {};
+        await recordUpscaleCostEvent({
+          imageId: job.image_id,
+          jobId: jobToken,
+          mode: job.mode,
+          provider: (pipeline.provider as string) || "replicate",
+          status: "failed",
+          estimatedCost: null,
+          metadata: {
+            error: errorMsg || `Replicate prediction ${status}`,
+            completed_at: new Date().toISOString(),
+          },
+        });
+      }
       return new Response(JSON.stringify({ ok: true }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
