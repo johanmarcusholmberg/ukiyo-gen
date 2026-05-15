@@ -78,6 +78,10 @@ import {
   UPSCALE_MODES,
   type UpscaleMode,
 } from "@/lib/upscale-modes";
+import {
+  assessUpscaleSuitability,
+  type UpscaleSuitability,
+} from "@/lib/upscale-suitability";
 
 type AdminStatus = "draft" | "needs_review" | "approved" | "rejected" | "archived";
 
