@@ -1205,179 +1205,47 @@ export default function ImageGenerator({
               );
             })()}
 
-            <div className="flex flex-wrap gap-2 items-center justify-center">
-              {hasEnhanced && (
-                <div className="flex items-center gap-1 border border-border rounded-sm p-0.5">
-                  {(["enhanced", "original", "compare"] as const).map((v) => (
-                    <Button key={v} variant={viewVersion === v ? "default" : "ghost"} size="sm"
-                      onClick={() => setViewVersion(v)} className="font-display text-xs h-7 px-2">
-                      {v === "enhanced" ? "Enhanced" : v === "original" ? "Original" : "Compare"}
-                    </Button>
-                  ))}
-                </div>
-              )}
-              <DownloadButton
-                url={viewVersion === "original" && hasEnhanced ? baseImageUrl! : imageUrl}
-                filename={`${styleConfig.downloadPrefix}-${mode}-${effectiveAspectRatio.replace(":", "x")}-${Date.now()}.png`}
-                versionLabel={hasEnhanced ? (viewVersion === "original" ? "Original" : "Enhanced") : undefined}
-                sizeLabel={generationMode === "print-ready" ? selectedPrintFormat.label : printSize.dimensions}
-              />
-
-              {generationMode === "print-ready" && (
-                <Button variant="outline" size="sm" onClick={handlePrintExport} disabled={exporting}
-                  className="font-display text-xs tracking-wider border-primary/30 text-primary hover:bg-primary/10">
-                  {exporting ? (
-                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Preparing…</>
-                  ) : (
-                    <><FileImage className="mr-2 h-4 w-4" /> Export Print ({selectedPrintFormat.label})</>
-                  )}
-                </Button>
-              )}
-              {/* Enhance for print — explicit, user-triggered, with cost confirmation.
-                  Replaces the old auto-upscale + manual UpscaleBadge flow.
-                  When an enhanced master exists, the dialog title becomes "Re-enhance"
-                  so re-spending budget is always opt-in. */}
-              {canManualUpscale && (
-                <EnhanceForPrintDialog
-                  hasEnhanced={!!hasEnhanced}
-                  recommendedRecipe={recommendedRecipe}
-                  disabled={isUpscaling}
-                  onConfirm={(m, recipe) =>
-                    runUpscale(m, savedGalleryIdRef.current, recipe ?? null)
-                  }
-                  trigger={
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={isUpscaling}
-                      className={cn(
-                        "font-display text-xs tracking-wider",
-                        hasEnhanced
-                          ? "border-border"
-                          : "border-primary/40 text-primary hover:bg-primary/10",
-                      )}
-                    >
-                      {isUpscaling ? (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      ) : (
-                        <ArrowUpCircle className="mr-2 h-4 w-4" />
-                      )}
-                      {hasEnhanced ? "Re-enhance" : "Enhance for print"}
-                    </Button>
-                  }
-                />
-              )}
-              {!savedToGallery && isEditMode && originalImageId && (
-                <Button variant="outline" size="sm" onClick={handleReplaceOriginal} disabled={replacing || saving}
-                  className="font-display text-xs tracking-wider">
-                  {replacing ? (
-                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Replacing…</>
-                  ) : (
-                    <><Replace className="mr-2 h-4 w-4" /> Replace Original</>
-                  )}
-                </Button>
-              )}
-              {!savedToGallery && (
-                <Button variant="outline" size="sm" onClick={handleSaveToGallery} disabled={saving || replacing}
-                  className="font-display text-xs tracking-wider">
-                  {saving ? (
-                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving…</>
-                  ) : (
-                    <><Save className="mr-2 h-4 w-4" /> {isEditMode ? "Save as New" : "Save to Gallery"}</>
-                  )}
-                </Button>
-              )}
-              <Button variant="outline" size="sm"
-                onClick={() => { setIsInlineEditing(true); setEditPrompt(""); }}
-                className="font-display text-xs tracking-wider">
-                <Pencil className="mr-2 h-4 w-4" /> Edit Image
-              </Button>
-              {/* Create Poster — opens an additive composer dialog. */}
-              <Dialog open={posterOpen} onOpenChange={setPosterOpen}>
-                <DialogTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="font-display text-xs tracking-wider border-primary/40 text-primary hover:bg-primary/10"
-                  >
-                    <LayoutPanelTop className="mr-2 h-4 w-4" /> Create Poster
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
-                  <DialogHeader>
-                    <DialogTitle className="font-display">Poster Composer</DialogTitle>
-                  </DialogHeader>
-                  <PosterComposer
-                    imageUrl={
-                      hasEnhanced && enhancedImageUrl
-                        ? enhancedImageUrl
-                        : imageUrl ?? ""
-                    }
-                    filenameBase={`${styleConfig.downloadPrefix}-${mode}`}
-                    printFormatId={selectedPrintFormat.id}
-                    initialTemplateId={lastPosterSnapshot?.templateId ?? posterTemplateId}
-                    initialTextMode={lastPosterSnapshot?.textMode ?? posterTextMode}
-                    initialText={
-                      lastPosterSnapshot
-                        ? {
-                            title: lastPosterSnapshot.title || undefined,
-                            subtitle: lastPosterSnapshot.subtitle || undefined,
-                            description: lastPosterSnapshot.description || undefined,
-                            ingredients:
-                              lastPosterSnapshot.ingredients.length > 0
-                                ? lastPosterSnapshot.ingredients
-                                : undefined,
-                          }
-                        : {
-                            title: composerTitle || undefined,
-                            subtitle: composerSubtitle || undefined,
-                            description: composerDescription || undefined,
-                          }
-                    }
-                    onRegenerate={async () => {
-                      await generate();
-                    }}
-                    isRegenerating={loading}
-                  />
-                </DialogContent>
-              </Dialog>
-              {savedToGallery && (
-                <span className="text-xs text-primary flex items-center gap-1 font-display">✓ Saved to gallery</span>
-              )}
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button variant="outline" size="sm"
-                    className="font-display text-xs tracking-wider text-destructive hover:text-destructive">
-                    <Trash2 className="mr-2 h-4 w-4" /> Remove
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle className="font-display">Remove generated image?</AlertDialogTitle>
-                    <AlertDialogDescription className="font-display">
-                      This will discard the generated image. This action cannot be undone.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel className="font-display">Cancel</AlertDialogCancel>
-                    <AlertDialogAction
-                      className="font-display bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                      onClick={() => {
-                        upscaleRunId.current++;
-                        resetUpscale();
-                        setImageUrl(null);
-                        setBaseImageUrl(null);
-                        setSavedToGallery(false);
-                        setViewVersion("enhanced");
-                        setEnhancedImageUrl(null);
-                      }}
-                    >
-                      Remove
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            </div>
+            <GeneratedImageActions
+              imageUrl={imageUrl}
+              baseImageUrl={baseImageUrl}
+              enhancedImageUrl={enhancedImageUrl}
+              hasEnhanced={hasEnhanced}
+              viewVersion={viewVersion}
+              onChangeViewVersion={setViewVersion}
+              mode={mode}
+              generationMode={generationMode}
+              selectedPrintFormat={selectedPrintFormat}
+              printSize={printSize}
+              effectiveAspectRatio={effectiveAspectRatio}
+              styleConfig={styleConfig}
+              isUpscaling={isUpscaling}
+              canManualUpscale={canManualUpscale}
+              recommendedRecipe={recommendedRecipe}
+              onEnhanceConfirm={handleEnhanceConfirm}
+              savedToGallery={savedToGallery}
+              isEditMode={isEditMode}
+              originalImageId={originalImageId}
+              saving={saving}
+              replacing={replacing}
+              exporting={exporting}
+              onSaveToGallery={handleSaveToGallery}
+              onReplaceOriginal={handleReplaceOriginal}
+              onPrintExport={handlePrintExport}
+              onStartInlineEdit={handleStartInlineEdit}
+              onRemoveImage={handleRemoveImage}
+              posterOpen={posterOpen}
+              onPosterOpenChange={setPosterOpen}
+              posterTemplateId={posterTemplateId}
+              posterTextMode={posterTextMode}
+              posterSafeAreaEnabled={posterSafeAreaEnabled}
+              composerTitle={composerTitle}
+              composerSubtitle={composerSubtitle}
+              composerDescription={composerDescription}
+              composerIngredientsRaw={composerIngredientsRaw}
+              lastPosterSnapshot={lastPosterSnapshot}
+              onRegenerate={generate}
+              isRegenerating={loading}
+            />
           </div>
         )}
 
