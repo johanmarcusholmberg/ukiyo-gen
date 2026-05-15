@@ -1477,6 +1477,120 @@ function AssetDetail({
           </pre>
         </details>
       </div>
+
+      {/* Confirm low / not-needed upscale */}
+      <AlertDialog
+        open={pendingMode !== null}
+        onOpenChange={(o) => !o && setPendingMode(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {suitability.level === "not-needed"
+                ? "This image already appears print-ready"
+                : "Limited benefit expected"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {suitability.level === "not-needed"
+                ? "Upscaling may add artifacts without visible gain. Continue?"
+                : "This image may not visually improve after upscaling. Continue?"}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                const m = pendingMode;
+                setPendingMode(null);
+                if (m) onUpscale(m);
+              }}
+            >
+              Continue anyway
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}
+
+const SUITABILITY_STYLE: Record<
+  UpscaleSuitability["level"],
+  { label: string; cls: string; icon: React.ReactNode }
+> = {
+  high: {
+    label: "Good candidate",
+    cls: "bg-primary/10 text-primary border-primary/30",
+    icon: <Sparkles className="h-3 w-3" />,
+  },
+  medium: {
+    label: "May help",
+    cls: "bg-orange-500/10 text-orange-500 border-orange-500/30",
+    icon: <Info className="h-3 w-3" />,
+  },
+  low: {
+    label: "Limited benefit",
+    cls: "bg-muted text-muted-foreground border-border",
+    icon: <AlertTriangle className="h-3 w-3" />,
+  },
+  "not-needed": {
+    label: "Not needed",
+    cls: "bg-muted text-muted-foreground border-border",
+    icon: <CheckCircle2 className="h-3 w-3" />,
+  },
+  unknown: {
+    label: "Unknown",
+    cls: "bg-muted text-muted-foreground border-border",
+    icon: <Info className="h-3 w-3" />,
+  },
+};
+
+function SuitabilityCard({
+  suitability,
+  alreadyUpscaled,
+}: {
+  suitability: UpscaleSuitability;
+  alreadyUpscaled: boolean;
+}) {
+  const s = SUITABILITY_STYLE[suitability.level];
+  return (
+    <div className="rounded-md border border-border bg-muted/30 px-2.5 py-2 space-y-1.5 text-xs">
+      <div className="flex items-center justify-between gap-2">
+        <span
+          className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm border font-medium ${s.cls}`}
+        >
+          {s.icon}
+          {s.label}
+        </span>
+        {suitability.effectivePpi != null && (
+          <span className="text-muted-foreground tabular-nums">
+            ~{suitability.effectivePpi} PPI
+          </span>
+        )}
+      </div>
+      <div className="text-foreground/90 leading-snug">{suitability.title}</div>
+      {suitability.reasons.length > 0 && (
+        <ul className="text-muted-foreground leading-snug list-disc pl-4 space-y-0.5">
+          {suitability.reasons.slice(0, 2).map((r, i) => (
+            <li key={i}>{r}</li>
+          ))}
+        </ul>
+      )}
+      {suitability.riskFlags.length > 0 && (
+        <ul className="text-orange-500/90 leading-snug list-disc pl-4 space-y-0.5">
+          {suitability.riskFlags.map((r, i) => (
+            <li key={i}>{r}</li>
+          ))}
+        </ul>
+      )}
+      <div className="text-muted-foreground/80 italic">
+        {suitability.recommendation}
+      </div>
+      {alreadyUpscaled && suitability.level !== "unknown" && (
+        <div className="text-[11px] text-muted-foreground">
+          Note: this asset already has an enhanced master.
+        </div>
+      )}
     </div>
   );
 }
