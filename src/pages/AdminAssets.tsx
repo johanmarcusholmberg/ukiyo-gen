@@ -484,6 +484,11 @@ export default function AdminAssets() {
       return;
     }
     if (mode === "none") return;
+
+    // Snapshot pre-state for cost-event diff metadata.
+    const prevDims = getMasterDimensions(row);
+    const prevReadiness = getPrintReadiness(row, row.print_format_id).level;
+
     setUpscalingId(row.id);
     const startedAt = new Date().toISOString();
     try {
@@ -493,23 +498,71 @@ export default function AdminAssets() {
       });
       const cfg = UPSCALE_MODES[mode];
       const estCost = estimateUpscaleCost(mode, mode, cfg.provider);
-      // Record a cost/action event going forward (admin-only RLS).
-      // Only attribute cost on success — failed runs may or may not be billed,
-      // so we leave estimated_cost null to avoid inflating totals.
-      await (supabase as any).from("asset_cost_events").insert({
-        generated_image_id: row.id,
-        event_type: "upscale",
-        provider: cfg.provider,
-        model: cfg.provider,
-        mode,
-        estimated_cost: result ? estCost : null,
-        currency: "USD",
-        status: result ? "succeeded" : "failed",
-        metadata: { started_at: startedAt, label: cfg.label },
-      });
+
+      // Reload from DB so new master/enhanced paths and dims are picked up
+      // (updateEnhancedAsset is called inside useUpscale on the sync path,
+      // upscale-webhook persists for async).
+      await loadRows();
+
+      // Compute new readiness against the freshly-loaded row (via closure
+      // over latest rows list inside setRows/loadRows is messy — re-fetch
+      // once for the diff snapshot only).
+      let newDims = prevDims;
+      let newReadiness = prevReadiness;
+      try {
+        const { data: fresh } = await supabase
+          .from("generated_images")
+          .select(
+            "enhanced_width_px,enhanced_height_px,actual_width_px,actual_height_px,base_width_px,base_height_px,print_format_id",
+          )
+          .eq("id", row.id)
+          .maybeSingle();
+        if (fresh) {
+          const freshLike = fresh as any;
+          newDims = getMasterDimensions(freshLike) || prevDims;
+          newReadiness = getPrintReadiness(
+            freshLike,
+            freshLike.print_format_id,
+          ).level;
+        }
+      } catch {
+        /* best-effort */
+      }
+
+      // Best-effort cost/history event with diff metadata.
+      try {
+        await (supabase as any).from("asset_cost_events").insert({
+          generated_image_id: row.id,
+          event_type: "upscale",
+          provider: cfg.provider,
+          model: cfg.provider,
+          mode,
+          estimated_cost: result ? estCost : null,
+          currency: "USD",
+          status: result ? "succeeded" : "failed",
+          metadata: {
+            started_at: startedAt,
+            label: cfg.label,
+            previous_dimensions: prevDims
+              ? { width: prevDims.width, height: prevDims.height }
+              : null,
+            new_dimensions: newDims
+              ? { width: newDims.width, height: newDims.height }
+              : null,
+            previous_print_readiness: prevReadiness,
+            new_print_readiness: newReadiness,
+            scale: result?.scale ?? cfg.scaleFactor,
+          },
+        });
+      } catch {
+        /* swallow — cost logging is best-effort */
+      }
+
+      // Refresh the in-modal cost history without closing the modal.
+      setCostRefreshTick((t) => t + 1);
+
       if (result) {
         toast.success(`Upscale complete (${cfg.shortLabel})`);
-        await loadRows();
       } else {
         toast.error("Upscale failed");
       }
@@ -526,6 +579,7 @@ export default function AdminAssets() {
           status: "failed",
           metadata: { error: String(err?.message || err) },
         });
+        setCostRefreshTick((t) => t + 1);
       } catch {
         /* swallow */
       }
