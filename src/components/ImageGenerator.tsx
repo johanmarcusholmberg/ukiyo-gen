@@ -739,6 +739,25 @@ export default function ImageGenerator({
     }
   };
 
+  const handleStartInlineEdit = () => {
+    setIsInlineEditing(true);
+    setEditPrompt("");
+  };
+
+  const handleRemoveImage = () => {
+    upscaleRunId.current++;
+    resetUpscale();
+    setImageUrl(null);
+    setBaseImageUrl(null);
+    setSavedToGallery(false);
+    setViewVersion("enhanced");
+    setEnhancedImageUrl(null);
+  };
+
+  const handleEnhanceConfirm = (m: import("@/lib/upscale-modes").UpscaleMode, recipe: import("@/lib/upscale-recipes").UpscaleRecipe | null) => {
+    runUpscale(m, savedGalleryIdRef.current, recipe ?? undefined);
+  };
+
   const isGenerating = loading;
 
   return (
