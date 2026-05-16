@@ -29,6 +29,7 @@ import { generateWithReplicateAdapter } from "@/lib/generation-providers/replica
 import { generateWithOpenAIAdapter } from "@/lib/generation-providers/openai";
 import { decideRoute, type RouteFamily } from "@/lib/style-routing";
 import { getFeedbackSignal } from "@/hooks/use-image-feedback";
+import { getModelById } from "@/lib/generation-providers/registry";
 
 export type AdapterId = "lovable" | "gemini" | "replicate" | "openai";
 
@@ -74,12 +75,24 @@ export interface RouterDiagnostics {
   routingReason?: string;
   /** Feedback signal that influenced routing (Auto only). */
   feedbackOverride?: string;
+  /** modelId from the request (if any). */
+  requestedModelId?: string;
+  /** Registry model id actually used to pin the primary adapter (if any). */
+  resolvedModelId?: string;
+  /** Adapter id derived from resolvedModelId (if any). */
+  resolvedAdapterId?: AdapterId;
+  /** Reason a requested modelId was not honored (if any). */
+  modelFallbackReason?: string;
 }
 
 interface ResolvedChain {
   chain: AdapterRun[];
   reason?: string;
   feedbackOverride?: string;
+  requestedModelId?: string;
+  resolvedModelId?: string;
+  resolvedAdapterId?: AdapterId;
+  modelFallbackReason?: string;
 }
 
 /**
@@ -94,32 +107,104 @@ export function resolveAdapterChain(
   // Image edits ALWAYS go through the Lovable adapter — only it has a
   // working image-to-image dispatch today.
   const isEdit = !!req.referenceImageUrl || !!req.isEdit;
+  const requestedModelId = req.modelId;
   if (isEdit) {
     return {
       chain: [ADAPTERS.lovable],
       reason: "edit → Lovable adapter (only image-to-image-capable path)",
+      requestedModelId,
+      modelFallbackReason: requestedModelId
+        ? "edit forces Lovable adapter; modelId ignored"
+        : undefined,
+    };
+  }
+
+  // ── modelId pin (Phase 4) ─────────────────────────────────────────────
+  // If the caller passed a registry modelId and it resolves to an enabled
+  // entry, use its adapter as the primary. For Auto we still append a
+  // Lovable safety net so the fallback story is unchanged. For a manual
+  // preference we let the manual chain decide.
+  let pinnedAdapter: AdapterRun | undefined;
+  let resolvedModelId: string | undefined;
+  let modelFallbackReason: string | undefined;
+  if (requestedModelId) {
+    const entry = getModelById(requestedModelId);
+    if (!entry) {
+      modelFallbackReason = `unknown modelId "${requestedModelId}"`;
+    } else if (!entry.enabled) {
+      modelFallbackReason = `modelId "${requestedModelId}" is disabled`;
+    } else {
+      const candidate = ADAPTERS[entry.adapterId];
+      if (!candidate) {
+        modelFallbackReason = `no adapter for "${entry.adapterId}"`;
+      } else {
+        pinnedAdapter = candidate;
+        resolvedModelId = entry.id;
+      }
+    }
+  }
+
+  if (pinnedAdapter && pref === "auto") {
+    const safetyNet = ADAPTERS.lovable;
+    const chain =
+      pinnedAdapter.id === safetyNet.id
+        ? [pinnedAdapter]
+        : [pinnedAdapter, safetyNet];
+    return {
+      chain,
+      reason: `pinned modelId=${resolvedModelId} → adapter=${pinnedAdapter.id} (auto fallback: lovable)`,
+      requestedModelId,
+      resolvedModelId,
+      resolvedAdapterId: pinnedAdapter.id,
     };
   }
 
   switch (pref) {
     case "gemini":
-      return { chain: [ADAPTERS.gemini], reason: "manual: gemini (direct)" };
+      // If user pinned a gemini-family modelId we already returned above.
+      return {
+        chain: [pinnedAdapter ?? ADAPTERS.gemini],
+        reason: pinnedAdapter
+          ? `manual gemini + pinned modelId=${resolvedModelId}`
+          : "manual: gemini (direct)",
+        requestedModelId,
+        resolvedModelId,
+        resolvedAdapterId: pinnedAdapter?.id,
+        modelFallbackReason,
+      };
 
     case "openai":
       // Manual OpenAI: fail loudly, no silent fallback. Direct API call
       // — does NOT consume Lovable image-generation credits.
       return {
-        chain: [ADAPTERS.openai],
-        reason: "manual: openai (direct, no Lovable credits)",
+        chain: [pinnedAdapter ?? ADAPTERS.openai],
+        reason: pinnedAdapter
+          ? `manual openai + pinned modelId=${resolvedModelId}`
+          : "manual: openai (direct, no Lovable credits)",
+        requestedModelId,
+        resolvedModelId,
+        resolvedAdapterId: pinnedAdapter?.id,
+        modelFallbackReason,
       };
 
     case "sdxl":
       // SDXL preference now means "direct Replicate first, Lovable as
       // a safety fallback". This shifts SDXL traffic off Lovable while
-      // keeping a working escape hatch.
+      // keeping a working escape hatch. A pinned modelId can override
+      // the primary, but the Lovable safety net is preserved.
       return {
-        chain: [ADAPTERS.replicate, ADAPTERS.lovable],
-        reason: "manual: sdxl → direct Replicate, fallback Lovable",
+        chain: pinnedAdapter
+          ? (pinnedAdapter.id === "lovable"
+              ? [pinnedAdapter]
+              : [pinnedAdapter, ADAPTERS.lovable])
+          : [ADAPTERS.replicate, ADAPTERS.lovable],
+        reason: pinnedAdapter
+          ? `manual sdxl + pinned modelId=${resolvedModelId} → ${pinnedAdapter.id}, fallback Lovable`
+          : "manual: sdxl → direct Replicate, fallback Lovable",
+        requestedModelId,
+        resolvedModelId,
+        resolvedAdapterId: pinnedAdapter?.id,
+        modelFallbackReason,
       };
 
     case "auto":
@@ -168,6 +253,8 @@ export function resolveAdapterChain(
         ),
         reason: decision.reason,
         feedbackOverride,
+        requestedModelId,
+        modelFallbackReason,
       };
     }
   }
@@ -216,14 +303,24 @@ export async function generateImage(
   req: NormalizedGenerationRequest,
 ): Promise<{ response: NormalizedGenerationResponse; diagnostics: RouterDiagnostics }> {
   const pref = req.providerPreference ?? "auto";
-  const { chain: effectiveChain, reason: routingReason, feedbackOverride } =
-    resolveAdapterChain(pref, req);
+  const {
+    chain: effectiveChain,
+    reason: routingReason,
+    feedbackOverride,
+    requestedModelId,
+    resolvedModelId,
+    resolvedAdapterId,
+    modelFallbackReason,
+  } = resolveAdapterChain(pref, req);
   const attempts: RouterDiagnostics["attemptedAdapters"] = [];
 
   console.log(
     `[generation-router] style=${req.styleKey} pref=${pref} ` +
       `chain=${effectiveChain.map((a) => a.id).join(" → ")} ` +
       `reason="${routingReason}"` +
+      (requestedModelId ? ` requestedModelId=${requestedModelId}` : "") +
+      (resolvedModelId ? ` resolvedModelId=${resolvedModelId}` : "") +
+      (modelFallbackReason ? ` modelFallback="${modelFallbackReason}"` : "") +
       (feedbackOverride ? ` feedbackOverride="${feedbackOverride}"` : ""),
   );
 
@@ -254,6 +351,10 @@ export async function generateImage(
           fallbackTriggered,
           routingReason,
           feedbackOverride,
+          requestedModelId,
+          resolvedModelId,
+          resolvedAdapterId,
+          modelFallbackReason,
         },
       };
     } catch (err) {
