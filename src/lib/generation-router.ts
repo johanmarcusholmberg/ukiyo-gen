@@ -29,6 +29,7 @@ import { generateWithReplicateAdapter } from "@/lib/generation-providers/replica
 import { generateWithOpenAIAdapter } from "@/lib/generation-providers/openai";
 import { decideRoute, type RouteFamily } from "@/lib/style-routing";
 import { getFeedbackSignal } from "@/hooks/use-image-feedback";
+import { getModelById } from "@/lib/generation-providers/registry";
 
 export type AdapterId = "lovable" | "gemini" | "replicate" | "openai";
 
