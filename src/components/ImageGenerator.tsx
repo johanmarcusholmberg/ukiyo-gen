@@ -52,6 +52,7 @@ import {
   type UpscaleMode,
 } from "@/lib/upscale-modes";
 import GeneratorBadge from "@/components/GeneratorBadge";
+import ModelSelector, { type ModelSelectorValue } from "@/components/generation/ModelSelector";
 // UpscaleBadge removed from generator — replaced by EnhanceForPrintDialog
 // (kept in Gallery for the lightbox).
 import {
@@ -145,6 +146,13 @@ export default function ImageGenerator({
   const [selectedPrintFormat, setSelectedPrintFormat] = useState<PrintFormat>(PRINT_FORMATS[0]);
   // Phase 1: generator provider preference (auto/sdxl/gemini), persisted in sessionStorage
   const [generatorPref, setGeneratorPref] = useState<GeneratorPreference>(() => loadGeneratorPreference());
+  // Phase 3: registry-driven model + quality/strategy selection. UI/request
+  // plumbing only — router dispatch still keyed off `generatorPref`.
+  const [modelSelection, setModelSelection] = useState<ModelSelectorValue>({
+    modelId: null,
+    qualityProfile: "balanced",
+    generationStrategy: null,
+  });
   const [lastProviderUsed, setLastProviderUsed] = useState<string | null>(null);
   const [lastModelUsed, setLastModelUsed] = useState<string | null>(null);
   const [lastFallbackUsed, setLastFallbackUsed] = useState<boolean>(false);
@@ -367,6 +375,9 @@ export default function ImageGenerator({
         posterFormatId: selectedPrintFormat.id,
         posterFormatHint: getPosterPromptHint(selectedPrintFormat.id),
         targetAspectRatio: selectedPrintFormat.aspectRatioDecimal,
+        modelId: modelSelection.modelId ?? undefined,
+        qualityProfile: modelSelection.qualityProfile,
+        generationStrategy: modelSelection.generationStrategy ?? undefined,
       });
 
       const baseUrl = gen.imageUrl;
@@ -987,6 +998,7 @@ export default function ImageGenerator({
                 lastUsedProvider={lastProviderUsed}
                 lastFallbackUsed={lastFallbackUsed}
               />
+              <ModelSelector value={modelSelection} onChange={setModelSelection} />
               <span
                 className="inline-flex items-center gap-1 px-2 py-0.5 rounded-sm border border-border bg-muted/40 text-[10px] font-display text-muted-foreground"
                 title="Configure per-style defaults at /style-control-panel"
