@@ -107,18 +107,86 @@ export function resolveAdapterChain(
   // Image edits ALWAYS go through the Lovable adapter — only it has a
   // working image-to-image dispatch today.
   const isEdit = !!req.referenceImageUrl || !!req.isEdit;
+  const requestedModelId = req.modelId;
   if (isEdit) {
     return {
       chain: [ADAPTERS.lovable],
       reason: "edit → Lovable adapter (only image-to-image-capable path)",
+      requestedModelId,
+      modelFallbackReason: requestedModelId
+        ? "edit forces Lovable adapter; modelId ignored"
+        : undefined,
+    };
+  }
+
+  // ── modelId pin (Phase 4) ─────────────────────────────────────────────
+  // If the caller passed a registry modelId and it resolves to an enabled
+  // entry, use its adapter as the primary. For Auto we still append a
+  // Lovable safety net so the fallback story is unchanged. For a manual
+  // preference we let the manual chain decide.
+  let pinnedAdapter: AdapterRun | undefined;
+  let resolvedModelId: string | undefined;
+  let modelFallbackReason: string | undefined;
+  if (requestedModelId) {
+    const entry = getModelById(requestedModelId);
+    if (!entry) {
+      modelFallbackReason = `unknown modelId "${requestedModelId}"`;
+    } else if (!entry.enabled) {
+      modelFallbackReason = `modelId "${requestedModelId}" is disabled`;
+    } else {
+      const candidate = ADAPTERS[entry.adapterId];
+      if (!candidate) {
+        modelFallbackReason = `no adapter for "${entry.adapterId}"`;
+      } else {
+        pinnedAdapter = candidate;
+        resolvedModelId = entry.id;
+      }
+    }
+  }
+
+  if (pinnedAdapter && pref === "auto") {
+    const safetyNet = ADAPTERS.lovable;
+    const chain =
+      pinnedAdapter.id === safetyNet.id
+        ? [pinnedAdapter]
+        : [pinnedAdapter, safetyNet];
+    return {
+      chain,
+      reason: `pinned modelId=${resolvedModelId} → adapter=${pinnedAdapter.id} (auto fallback: lovable)`,
+      requestedModelId,
+      resolvedModelId,
+      resolvedAdapterId: pinnedAdapter.id,
     };
   }
 
   switch (pref) {
     case "gemini":
-      return { chain: [ADAPTERS.gemini], reason: "manual: gemini (direct)" };
+      // If user pinned a gemini-family modelId we already returned above.
+      return {
+        chain: [pinnedAdapter ?? ADAPTERS.gemini],
+        reason: pinnedAdapter
+          ? `manual gemini + pinned modelId=${resolvedModelId}`
+          : "manual: gemini (direct)",
+        requestedModelId,
+        resolvedModelId,
+        resolvedAdapterId: pinnedAdapter?.id,
+        modelFallbackReason,
+      };
 
     case "openai":
+      // Manual OpenAI: fail loudly, no silent fallback. Direct API call
+      // — does NOT consume Lovable image-generation credits.
+      return {
+        chain: [pinnedAdapter ?? ADAPTERS.openai],
+        reason: pinnedAdapter
+          ? `manual openai + pinned modelId=${resolvedModelId}`
+          : "manual: openai (direct, no Lovable credits)",
+        requestedModelId,
+        resolvedModelId,
+        resolvedAdapterId: pinnedAdapter?.id,
+        modelFallbackReason,
+      };
+
       // Manual OpenAI: fail loudly, no silent fallback. Direct API call
       // — does NOT consume Lovable image-generation credits.
       return {
