@@ -146,6 +146,13 @@ export default function ImageGenerator({
   const [selectedPrintFormat, setSelectedPrintFormat] = useState<PrintFormat>(PRINT_FORMATS[0]);
   // Phase 1: generator provider preference (auto/sdxl/gemini), persisted in sessionStorage
   const [generatorPref, setGeneratorPref] = useState<GeneratorPreference>(() => loadGeneratorPreference());
+  // Phase 3: registry-driven model + quality/strategy selection. UI/request
+  // plumbing only — router dispatch still keyed off `generatorPref`.
+  const [modelSelection, setModelSelection] = useState<ModelSelectorValue>({
+    modelId: null,
+    qualityProfile: "balanced",
+    generationStrategy: null,
+  });
   const [lastProviderUsed, setLastProviderUsed] = useState<string | null>(null);
   const [lastModelUsed, setLastModelUsed] = useState<string | null>(null);
   const [lastFallbackUsed, setLastFallbackUsed] = useState<boolean>(false);
