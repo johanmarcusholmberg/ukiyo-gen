@@ -35,6 +35,8 @@ export async function generateWithGeminiAdapter(
   if (req.posterFormatHint) body.posterFormatHint = req.posterFormatHint;
   if (req.posterFormatId) body.posterFormatId = req.posterFormatId;
   if (req.referenceImageUrl) body.sourceImageUrl = req.referenceImageUrl;
+  if (req.requestedModelId) body.requestedModelId = req.requestedModelId;
+  if (req.providerModelId) body.providerModelId = req.providerModelId;
 
   const { data, error } = await supabase.functions.invoke(edgeFn, { body });
   if (error) throw error;
