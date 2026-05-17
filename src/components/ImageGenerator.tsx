@@ -1018,6 +1018,31 @@ export default function ImageGenerator({
             )}
           </summary>
           <div className="px-1 pt-3 pb-1 space-y-3">
+            {(lastRequestedModelId || lastResolvedModelId || lastModelFallbackReason) && (
+              <div
+                className="px-2 py-1.5 rounded-sm border border-border bg-muted/30 text-[10px] font-display text-muted-foreground leading-snug"
+                title="Model selection truthfulness"
+              >
+                {lastRequestedModelId && (
+                  <span>
+                    Requested:{" "}
+                    <span className="text-foreground">{lastResolvedModelId ?? lastRequestedModelId}</span>
+                    {" · "}
+                  </span>
+                )}
+                <span>
+                  Used:{" "}
+                  <span className="text-foreground">
+                    {lastProviderUsed ?? "—"}
+                    {lastModelUsed ? ` / ${lastModelUsed}` : ""}
+                  </span>
+                  {lastSelectedAdapterId ? ` (adapter: ${lastSelectedAdapterId})` : ""}
+                </span>
+                {lastModelFallbackReason && (
+                  <div className="text-amber-500 mt-0.5">Fallback: {lastModelFallbackReason}</div>
+                )}
+              </div>
+            )}
             <div className="flex items-center gap-2 flex-wrap">
               <GeneratorBadge
                 value={generatorPref}
