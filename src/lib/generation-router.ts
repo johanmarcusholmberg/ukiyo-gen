@@ -334,8 +334,7 @@ export async function generateImage(
     ? {
         ...req,
         requestedModelId: req.modelId,
-        // Hint adapters that may honor a provider-native model id.
-        ...( { providerModelId: registryEntry.modelId } as Record<string, unknown> ),
+        providerModelId: registryEntry.modelId,
       }
     : req;
 
