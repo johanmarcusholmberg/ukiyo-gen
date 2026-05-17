@@ -171,6 +171,11 @@ export default function ImageGenerator({
   const [lastEstimatedCost, setLastEstimatedCost] = useState<number | null>(null);
   const [lastCurrency, setLastCurrency] = useState<string>("USD");
   const [lastPromptVersion, setLastPromptVersion] = useState<string | null>(null);
+  // Phase 5 — model-selection truthfulness
+  const [lastRequestedModelId, setLastRequestedModelId] = useState<string | null>(null);
+  const [lastResolvedModelId, setLastResolvedModelId] = useState<string | null>(null);
+  const [lastSelectedAdapterId, setLastSelectedAdapterId] = useState<string | null>(null);
+  const [lastModelFallbackReason, setLastModelFallbackReason] = useState<string | null>(null);
   const [compareOpen, setCompareOpen] = useState(false);
   // Poster Composer integration (additive — does not change the generator).
   // The user can configure template + text BEFORE generation. After the
