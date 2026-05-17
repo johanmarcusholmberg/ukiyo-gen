@@ -63,6 +63,16 @@ export async function generateWithGeminiAdapter(
     requestedAspectRatio: data.requestedAspectRatio,
     providerExactMatch: data.providerExactMatch,
     providerAdjusted: data.providerAdjusted,
-    metadata: { adapter: "gemini-direct", edgeFn },
+    metadata: {
+      adapter: "gemini-direct",
+      edgeFn,
+      requestedModelId: req.requestedModelId ?? null,
+      modelFallbackReason:
+        req.providerModelId &&
+        data.model &&
+        req.providerModelId !== data.model
+          ? `requested ${req.providerModelId} but adapter ran ${data.model}`
+          : null,
+    },
   };
 }
