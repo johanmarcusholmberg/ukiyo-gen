@@ -85,6 +85,17 @@ export interface NormalizedGenerationRequest {
    * Optional — omitting it preserves today's behavior.
    */
   generationStrategy?: "artistic" | "photoreal" | "poster" | "interior" | "graphic";
+  /**
+   * Echo of the caller's modelId — set by the router so adapters can read
+   * it without re-resolving the registry. Optional; same value as modelId.
+   */
+  requestedModelId?: string;
+  /**
+   * Provider-native model identifier (from the registry entry's modelId),
+   * forwarded so adapters can pin the actual upstream model when supported.
+   * Adapters that cannot honor it should report `modelFallbackReason`.
+   */
+  providerModelId?: string;
 }
 
 // ── Response ─────────────────────────────────────────────────────────────
