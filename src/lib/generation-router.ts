@@ -327,21 +327,61 @@ export async function generateImage(
   // For manual "gemini" we explicitly disallow silent fallback.
   const allowFallback = pref === "auto" || pref === "sdxl";
 
+  // Resolve registry entry (if any) so we can pass providerModelId into
+  // the adapter request and detect mismatches in the response.
+  const registryEntry = resolvedModelId ? getModelById(resolvedModelId) : undefined;
+  const adapterReq: NormalizedGenerationRequest = registryEntry
+    ? {
+        ...req,
+        requestedModelId: req.modelId,
+        // Hint adapters that may honor a provider-native model id.
+        ...( { providerModelId: registryEntry.modelId } as Record<string, unknown> ),
+      }
+    : req;
+
   for (let i = 0; i < effectiveChain.length; i++) {
     const adapter = effectiveChain[i];
     try {
-      const response = await adapter.run(req);
+      const response = await adapter.run(adapterReq);
       attempts.push({ id: adapter.id, ok: true });
 
       const fallbackTriggered = i > 0;
+      let runtimeFallbackReason = modelFallbackReason;
+      // Detect provider/model mismatch vs. what was requested.
+      if (registryEntry) {
+        if (response.generationProvider !== registryEntry.providerId) {
+          runtimeFallbackReason =
+            runtimeFallbackReason ||
+            `requested ${registryEntry.providerId}/${registryEntry.modelId} but adapter ran ${response.generationProvider}/${response.generationModel}`;
+        } else if (
+          response.generationModel &&
+          registryEntry.modelId &&
+          response.generationModel !== registryEntry.modelId
+        ) {
+          runtimeFallbackReason =
+            runtimeFallbackReason ||
+            `requested model ${registryEntry.modelId} but adapter ran ${response.generationModel}`;
+        }
+      }
+
+      const enriched: NormalizedGenerationResponse = {
+        ...response,
+        requestedModelId: req.modelId,
+        resolvedModelId,
+        selectedAdapterId: adapter.id,
+        modelFallbackReason: runtimeFallbackReason,
+        qualityProfile: req.qualityProfile,
+        generationStrategy: req.generationStrategy,
+      };
       const finalResponse = fallbackTriggered
-        ? annotateFallback(response, adapter.id, routingReason)
-        : { ...response, routingReason };
+        ? annotateFallback(enriched, adapter.id, routingReason)
+        : { ...enriched, routingReason };
 
       console.log(
         `[generation-router] ✓ adapter=${adapter.id} ` +
           `provider=${response.generationProvider} ` +
-          `route=${finalResponse.executionRoute} fallback=${fallbackTriggered}`,
+          `route=${finalResponse.executionRoute} fallback=${fallbackTriggered}` +
+          (runtimeFallbackReason ? ` modelFallback="${runtimeFallbackReason}"` : ""),
       );
 
       return {
@@ -353,8 +393,8 @@ export async function generateImage(
           feedbackOverride,
           requestedModelId,
           resolvedModelId,
-          resolvedAdapterId,
-          modelFallbackReason,
+          resolvedAdapterId: adapter.id,
+          modelFallbackReason: runtimeFallbackReason,
         },
       };
     } catch (err) {
