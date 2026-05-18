@@ -694,6 +694,12 @@ export default function ImageGenerator({
         actualWidthPx: masterDims?.width ?? baseDims?.width,
         actualHeightPx: masterDims?.height ?? baseDims?.height,
         printReadiness: readiness,
+        requestedModelId: lastRequestedModelId,
+        resolvedModelId: lastResolvedModelId,
+        selectedAdapterId: lastSelectedAdapterId,
+        qualityProfile: modelSelection.qualityProfile ?? null,
+        generationStrategy: modelSelection.generationStrategy ?? null,
+        modelFallbackReason: lastModelFallbackReason,
       });
       setSavedToGallery(true);
       onImageSaved?.();
