@@ -1456,6 +1456,50 @@ function AssetDetail({
           />
           <Field label="Enhancement model" value={row.enhancement_model} />
         </div>
+        {(row.requested_model_id ||
+          row.resolved_model_id ||
+          row.selected_adapter_id ||
+          row.quality_profile ||
+          row.generation_strategy ||
+          row.model_fallback_reason) && (
+          <>
+            <Separator />
+            <div>
+              <h4 className="text-sm font-semibold mb-2">Model selection</h4>
+              <Field
+                label="Requested model"
+                value={
+                  row.requested_model_id
+                    ? getModelById(row.requested_model_id)?.displayName ||
+                      row.requested_model_id
+                    : null
+                }
+              />
+              <Field
+                label="Resolved model"
+                value={
+                  row.resolved_model_id
+                    ? getModelById(row.resolved_model_id)?.displayName ||
+                      row.resolved_model_id
+                    : null
+                }
+              />
+              <Field label="Adapter" value={row.selected_adapter_id} />
+              <Field label="Quality profile" value={row.quality_profile} />
+              <Field label="Strategy" value={row.generation_strategy} />
+              {row.model_fallback_reason && (
+                <Field
+                  label="Fallback reason"
+                  value={
+                    <span className="text-orange-500">
+                      {row.model_fallback_reason}
+                    </span>
+                  }
+                />
+              )}
+            </div>
+          </>
+        )}
         <Separator />
         <div>
           <h4 className="text-sm font-semibold mb-2">Cost &amp; history</h4>
