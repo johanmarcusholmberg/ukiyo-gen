@@ -225,6 +225,7 @@ export type Database = {
           generation_mode: string | null
           generation_model: string | null
           generation_provider: string | null
+          generation_strategy: string | null
           id: string
           master_height: number | null
           master_image_url: string | null
@@ -232,6 +233,7 @@ export type Database = {
           master_width: number | null
           mode: string
           model: string | null
+          model_fallback_reason: string | null
           original_storage_path: string | null
           padding_mode: string | null
           print_format_id: string | null
@@ -242,7 +244,11 @@ export type Database = {
           provider: string | null
           provider_strategy: string | null
           quality_mode: string | null
+          quality_profile: string | null
+          requested_model_id: string | null
+          resolved_model_id: string | null
           route: string | null
+          selected_adapter_id: string | null
           source_file_name: string | null
           source_height: number | null
           source_image_url: string | null
@@ -291,6 +297,7 @@ export type Database = {
           generation_mode?: string | null
           generation_model?: string | null
           generation_provider?: string | null
+          generation_strategy?: string | null
           id?: string
           master_height?: number | null
           master_image_url?: string | null
@@ -298,6 +305,7 @@ export type Database = {
           master_width?: number | null
           mode?: string
           model?: string | null
+          model_fallback_reason?: string | null
           original_storage_path?: string | null
           padding_mode?: string | null
           print_format_id?: string | null
@@ -308,7 +316,11 @@ export type Database = {
           provider?: string | null
           provider_strategy?: string | null
           quality_mode?: string | null
+          quality_profile?: string | null
+          requested_model_id?: string | null
+          resolved_model_id?: string | null
           route?: string | null
+          selected_adapter_id?: string | null
           source_file_name?: string | null
           source_height?: number | null
           source_image_url?: string | null
@@ -357,6 +369,7 @@ export type Database = {
           generation_mode?: string | null
           generation_model?: string | null
           generation_provider?: string | null
+          generation_strategy?: string | null
           id?: string
           master_height?: number | null
           master_image_url?: string | null
@@ -364,6 +377,7 @@ export type Database = {
           master_width?: number | null
           mode?: string
           model?: string | null
+          model_fallback_reason?: string | null
           original_storage_path?: string | null
           padding_mode?: string | null
           print_format_id?: string | null
@@ -374,7 +388,11 @@ export type Database = {
           provider?: string | null
           provider_strategy?: string | null
           quality_mode?: string | null
+          quality_profile?: string | null
+          requested_model_id?: string | null
+          resolved_model_id?: string | null
           route?: string | null
+          selected_adapter_id?: string | null
           source_file_name?: string | null
           source_height?: number | null
           source_image_url?: string | null
