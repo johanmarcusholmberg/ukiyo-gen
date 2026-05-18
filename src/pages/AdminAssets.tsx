@@ -123,6 +123,12 @@ interface AssetRow extends AssetImageLike {
   admin_status?: AdminStatus | null;
   deleted_at?: string | null;
   folder_id?: string | null;
+  requested_model_id?: string | null;
+  resolved_model_id?: string | null;
+  selected_adapter_id?: string | null;
+  quality_profile?: string | null;
+  generation_strategy?: string | null;
+  model_fallback_reason?: string | null;
 }
 
 const STATUS_OPTIONS: { value: AdminStatus | "all"; label: string }[] = [
