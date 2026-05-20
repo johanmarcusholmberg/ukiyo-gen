@@ -179,11 +179,15 @@ export async function preparePrintExport(
   const upscaleFactor = targetW / norm.outputWidth;
   const upscaleApplied = upscaleFactor > 1.01;
 
-  // 3. Render to canvas
+  // 3. Render to canvas — validate first so we never allocate an oversized buffer.
+  assertCanvasWithinLimits(targetW, targetH);
   const canvas = document.createElement("canvas");
   canvas.width = targetW;
   canvas.height = targetH;
-  const ctx = canvas.getContext("2d")!;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) {
+    throw new Error("Could not allocate canvas for export — your browser may be low on memory.");
+  }
 
   // Fill with pad colour first (visible if padding is used)
   ctx.fillStyle = opts.padColor ?? "#ffffff";
