@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { QualityTarget } from "@/lib/print-resolution";
+import { loadImageDimensions } from "@/lib/image-metadata";
 
 /**
  * Converts a base64 data URL to a Blob
@@ -140,7 +141,7 @@ export async function saveToGallery(opts: GallerySaveOptions) {
   let actualHeightPx = opts.actualHeightPx;
   if (!actualWidthPx || !actualHeightPx) {
     try {
-      const { loadImageDimensions } = await import("@/lib/image-metadata");
+      
       const masterUrl = supabase.storage
         .from("generated-images")
         .getPublicUrl(masterPath).data.publicUrl;
@@ -322,7 +323,7 @@ export async function replaceInGallery(
   let actualHeightPx = opts.actualHeightPx;
   if (!actualWidthPx || !actualHeightPx) {
     try {
-      const { loadImageDimensions } = await import("@/lib/image-metadata");
+      
       const masterUrl = supabase.storage
         .from("generated-images")
         .getPublicUrl(masterPath).data.publicUrl;
