@@ -134,6 +134,25 @@ export async function saveToGallery(opts: GallerySaveOptions) {
   // Master = enhanced if available, otherwise base
   const masterPath = enhancedPath || base.filename;
 
+  // Phase 3 — best-effort actual-dimension probe when caller didn't provide them.
+  // Never blocks save flow on failure.
+  let actualWidthPx = opts.actualWidthPx;
+  let actualHeightPx = opts.actualHeightPx;
+  if (!actualWidthPx || !actualHeightPx) {
+    try {
+      const { loadImageDimensions } = await import("@/lib/image-metadata");
+      const masterUrl = supabase.storage
+        .from("generated-images")
+        .getPublicUrl(masterPath).data.publicUrl;
+      const dims = await loadImageDimensions(masterUrl);
+      actualWidthPx = actualWidthPx ?? dims.width;
+      actualHeightPx = actualHeightPx ?? dims.height;
+    } catch {
+      /* non-fatal */
+    }
+  }
+
+
   const { error: dbError } = await supabase.from("generated_images").insert({
     prompt: opts.prompt,
     mode: opts.mode,
