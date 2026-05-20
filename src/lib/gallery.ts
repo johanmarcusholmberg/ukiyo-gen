@@ -141,7 +141,7 @@ export async function saveToGallery(opts: GallerySaveOptions) {
   let actualHeightPx = opts.actualHeightPx;
   if (!actualWidthPx || !actualHeightPx) {
     try {
-      const { loadImageDimensions } = await import("@/lib/image-metadata");
+      
       const masterUrl = supabase.storage
         .from("generated-images")
         .getPublicUrl(masterPath).data.publicUrl;
@@ -323,7 +323,7 @@ export async function replaceInGallery(
   let actualHeightPx = opts.actualHeightPx;
   if (!actualWidthPx || !actualHeightPx) {
     try {
-      const { loadImageDimensions } = await import("@/lib/image-metadata");
+      
       const masterUrl = supabase.storage
         .from("generated-images")
         .getPublicUrl(masterPath).data.publicUrl;
