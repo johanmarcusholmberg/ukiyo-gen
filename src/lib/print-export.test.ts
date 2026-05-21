@@ -40,9 +40,10 @@ describe("print-export · assertCanvasWithinLimits", () => {
     expect(() => assertCanvasWithinLimits(w, h)).toThrow(/too large for browser rendering/);
   });
 
-  it("accepts exactly the maximum allowed pixel area", () => {
-    const w = 10000;
-    const h = Math.floor(MAX_CANVAS_PIXELS / w); // = 20000
+  it("accepts a large area that stays under both caps", () => {
+    const w = 12500;
+    const h = Math.floor(MAX_CANVAS_PIXELS / w); // = 16000, < 16384
+    expect(h).toBeLessThanOrEqual(MAX_CANVAS_DIMENSION);
     expect(() => assertCanvasWithinLimits(w, h)).not.toThrow();
   });
 });
