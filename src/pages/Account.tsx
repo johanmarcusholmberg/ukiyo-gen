@@ -20,17 +20,17 @@ import { toast } from "sonner";
 export default function Account() {
   const { access, refresh, signOut } = useAuth();
 
-  if (access.kind !== "active") {
-    return null; // RequireAuth handles loading/anon
-  }
+  const profile = access.kind === "active" ? access.profile : null;
+  const role = access.kind === "active" ? access.role : null;
 
-  const profile = access.profile;
-  const role = access.role;
-
-  const [displayName, setDisplayName] = useState(profile.display_name ?? "");
+  const [displayName, setDisplayName] = useState(profile?.display_name ?? "");
   const [saving, setSaving] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  if (access.kind !== "active" || !profile || !role) {
+    return null; // RequireAuth handles loading/anon
+  }
 
   const save = async () => {
     setSaving(true);
