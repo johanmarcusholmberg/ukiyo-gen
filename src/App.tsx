@@ -28,6 +28,7 @@ import BrutalistPoster from "./pages/BrutalistPoster";
 import XeroxZine from "./pages/XeroxZine";
 import ScandinavianPoster from "./pages/ScandinavianPoster";
 import Vintage from "./pages/Vintage";
+import WhimsicalJapanese from "./pages/WhimsicalJapanese";
 import Blend from "./pages/Blend";
 import StyleCompare from "./pages/StyleCompare";
 import BatchStudio from "./pages/BatchStudio";
