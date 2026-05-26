@@ -83,6 +83,7 @@ const App = () => (
               <Route path="/xeroxzine" element={protect(<XeroxZine />)} />
               <Route path="/scandinavian-poster" element={protect(<ScandinavianPoster />)} />
               <Route path="/vintage" element={protect(<Vintage />)} />
+              <Route path="/whimsical-japanese" element={protect(<WhimsicalJapanese />)} />
               <Route path="/blend" element={protect(<Blend />)} />
               <Route path="/compare" element={protect(<StyleCompare />)} />
               <Route path="/batch" element={protect(<BatchStudio />)} />
