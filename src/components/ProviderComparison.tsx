@@ -193,6 +193,11 @@ export default function ProviderComparison({
             onPick={(res) =>
               onPick({ imageUrl: res.imageUrl, response: res })
             }
+            onSave={
+              onSaveResult
+                ? (res) => onSaveResult({ imageUrl: res.imageUrl, response: res })
+                : undefined
+            }
             request={request}
           />
         ))}
