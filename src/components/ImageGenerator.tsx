@@ -1178,6 +1178,47 @@ export default function ImageGenerator({
                 description: `Using ${response.generationProvider.toUpperCase()} via ${response.executionRoute}.`,
               });
             }}
+            onSaveResult={async ({ imageUrl: resultUrl, response }) => {
+              const finalPrompt = isEditMode && initialPrompt
+                ? `${initialPrompt} | Edited: ${prompt.trim()}`
+                : (isInlineEditing ? editPrompt : prompt).trim();
+              const isPrint = generationMode === "print-ready";
+              const { baseDims, masterDims, readiness } =
+                await probeDimensionsAndReadiness(
+                  resultUrl,
+                  resultUrl,
+                  isPrint ? selectedPrintFormat.id : null,
+                );
+              const baseOpts = buildSaveOptions();
+              await saveToGallery({
+                ...baseOpts,
+                imageUrl: resultUrl,
+                prompt: finalPrompt,
+                baseImageUrl: resultUrl,
+                masterImageUrl: resultUrl,
+                baseWidthPx: baseDims?.width,
+                baseHeightPx: baseDims?.height,
+                masterWidth: masterDims?.width,
+                masterHeight: masterDims?.height,
+                actualWidthPx: masterDims?.width ?? baseDims?.width,
+                actualHeightPx: masterDims?.height ?? baseDims?.height,
+                printReadiness: readiness,
+                // Override provider/route metadata with the comparison result
+                // so the saved row reflects the provider the user actually saved.
+                generationProvider: response.generationProvider,
+                generationModel: response.generationModel,
+                providerStrategy: response.strategy,
+                fallbackUsed: response.fallbackUsed,
+                executionRoute: response.executionRoute,
+                assetRole: "base_generation",
+                // Comparison results are unenhanced raw base images.
+                enhanced: false,
+                enhancedImageUrl: undefined,
+                enhancementModel: undefined,
+                upscaleFactor: undefined,
+              });
+              onImageSaved?.();
+            }}
             onClose={() => setCompareOpen(false)}
           />
         )}
