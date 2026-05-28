@@ -303,14 +303,54 @@ function ComparisonSlot({ label, state, request, onPick, onSave }: ComparisonSlo
                 <ThumbsDown className="h-3 w-3" />
               </button>
             </div>
-            <Button
-              size="sm"
-              onClick={() => onPick(res)}
-              className="font-display text-[11px] h-7"
-            >
-              <Check className="h-3 w-3 mr-1" />
-              Use this
-            </Button>
+            <div className="flex items-center gap-1.5 flex-wrap justify-end">
+              {onSave && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={saving || saved}
+                  onClick={async () => {
+                    if (!res) return;
+                    setSaving(true);
+                    try {
+                      await onSave(res);
+                      setSaved(true);
+                      toast({
+                        title: "Saved to gallery",
+                        description: `${res.generationProvider.toUpperCase()} result added.`,
+                      });
+                    } catch (err: any) {
+                      toast({
+                        title: "Save failed",
+                        description: err?.message || "Could not save image",
+                        variant: "destructive",
+                      });
+                    } finally {
+                      setSaving(false);
+                    }
+                  }}
+                  className="font-display text-[11px] h-7"
+                  title="Save this result to gallery"
+                >
+                  {saving ? (
+                    <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                  ) : saved ? (
+                    <Check className="h-3 w-3 mr-1" />
+                  ) : (
+                    <Save className="h-3 w-3 mr-1" />
+                  )}
+                  {saved ? "Saved" : saving ? "Saving…" : "Save to gallery"}
+                </Button>
+              )}
+              <Button
+                size="sm"
+                onClick={() => onPick(res)}
+                className="font-display text-[11px] h-7"
+              >
+                <Check className="h-3 w-3 mr-1" />
+                Use this
+              </Button>
+            </div>
           </div>
         </div>
       )}
