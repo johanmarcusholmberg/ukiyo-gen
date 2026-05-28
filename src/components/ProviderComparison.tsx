@@ -11,7 +11,7 @@
  */
 
 import { useState } from "react";
-import { Loader2, ThumbsUp, ThumbsDown, Check } from "lucide-react";
+import { Loader2, ThumbsUp, ThumbsDown, Check, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -40,6 +40,12 @@ interface ProviderComparisonProps {
   adapters: Array<{ id: "lovable" | "gemini" | "replicate" | "openai"; label: string }>;
   onPick: (pick: ComparisonResultPick) => void;
   onClose: () => void;
+  /**
+   * Optional per-result save handler. When provided, each successful card
+   * shows a "Save to gallery" button independent of "Use this". Should
+   * resolve on success and throw on failure.
+   */
+  onSaveResult?: (pick: ComparisonResultPick) => Promise<void>;
 }
 
 interface SlotState {
@@ -53,6 +59,7 @@ export default function ProviderComparison({
   adapters,
   onPick,
   onClose,
+  onSaveResult,
 }: ProviderComparisonProps) {
   const { toast } = useToast();
   const [slots, setSlots] = useState<Record<string, SlotState>>(() =>
@@ -186,6 +193,11 @@ export default function ProviderComparison({
             onPick={(res) =>
               onPick({ imageUrl: res.imageUrl, response: res })
             }
+            onSave={
+              onSaveResult
+                ? (res) => onSaveResult({ imageUrl: res.imageUrl, response: res })
+                : undefined
+            }
             request={request}
           />
         ))}
@@ -199,9 +211,13 @@ interface ComparisonSlotProps {
   state: SlotState;
   request: CompareRequest;
   onPick: (response: NormalizedGenerationResponse) => void;
+  onSave?: (response: NormalizedGenerationResponse) => Promise<void>;
 }
 
-function ComparisonSlot({ label, state, request, onPick }: ComparisonSlotProps) {
+function ComparisonSlot({ label, state, request, onPick, onSave }: ComparisonSlotProps) {
+  const { toast } = useToast();
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
   const res = state.response;
   const { rating, setFeedback } = useImageFeedback({
     prompt: request.prompt,
@@ -287,14 +303,54 @@ function ComparisonSlot({ label, state, request, onPick }: ComparisonSlotProps) 
                 <ThumbsDown className="h-3 w-3" />
               </button>
             </div>
-            <Button
-              size="sm"
-              onClick={() => onPick(res)}
-              className="font-display text-[11px] h-7"
-            >
-              <Check className="h-3 w-3 mr-1" />
-              Use this
-            </Button>
+            <div className="flex items-center gap-1.5 flex-wrap justify-end">
+              {onSave && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={saving || saved}
+                  onClick={async () => {
+                    if (!res) return;
+                    setSaving(true);
+                    try {
+                      await onSave(res);
+                      setSaved(true);
+                      toast({
+                        title: "Saved to gallery",
+                        description: `${res.generationProvider.toUpperCase()} result added.`,
+                      });
+                    } catch (err: any) {
+                      toast({
+                        title: "Save failed",
+                        description: err?.message || "Could not save image",
+                        variant: "destructive",
+                      });
+                    } finally {
+                      setSaving(false);
+                    }
+                  }}
+                  className="font-display text-[11px] h-7"
+                  title="Save this result to gallery"
+                >
+                  {saving ? (
+                    <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                  ) : saved ? (
+                    <Check className="h-3 w-3 mr-1" />
+                  ) : (
+                    <Save className="h-3 w-3 mr-1" />
+                  )}
+                  {saved ? "Saved" : saving ? "Saving…" : "Save to gallery"}
+                </Button>
+              )}
+              <Button
+                size="sm"
+                onClick={() => onPick(res)}
+                className="font-display text-[11px] h-7"
+              >
+                <Check className="h-3 w-3 mr-1" />
+                Use this
+              </Button>
+            </div>
           </div>
         </div>
       )}
