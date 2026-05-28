@@ -211,9 +211,13 @@ interface ComparisonSlotProps {
   state: SlotState;
   request: CompareRequest;
   onPick: (response: NormalizedGenerationResponse) => void;
+  onSave?: (response: NormalizedGenerationResponse) => Promise<void>;
 }
 
-function ComparisonSlot({ label, state, request, onPick }: ComparisonSlotProps) {
+function ComparisonSlot({ label, state, request, onPick, onSave }: ComparisonSlotProps) {
+  const { toast } = useToast();
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
   const res = state.response;
   const { rating, setFeedback } = useImageFeedback({
     prompt: request.prompt,
