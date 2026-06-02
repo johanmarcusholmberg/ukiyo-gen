@@ -34,7 +34,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 
@@ -43,6 +43,7 @@ import {
   setImageRating,
   setImageFavorite,
   setImageArchived,
+  setImageRejected,
   type ImageRating,
   type ReviewImage,
 } from "@/lib/style-lab";
