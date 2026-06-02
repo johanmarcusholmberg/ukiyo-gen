@@ -318,6 +318,8 @@ export default function ReviewGrid() {
               onRate={(n) => handleRate(row, n)}
               onFav={() => handleFav(row)}
               onArchive={() => handleArchive(row)}
+              onReject={() => handleReject(row)}
+              onAddToCollection={() => setCollectionFor(row)}
             />
           ))}
         </div>
