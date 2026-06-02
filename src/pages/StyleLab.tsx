@@ -458,6 +458,10 @@ export default function StyleLab() {
             <TabsContent value="review">
               <ReviewGrid />
             </TabsContent>
+
+            <TabsContent value="insights">
+              <InsightsPanel />
+            </TabsContent>
           </Tabs>
         </div>
       </main>
