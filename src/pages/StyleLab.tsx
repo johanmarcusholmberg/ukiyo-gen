@@ -11,7 +11,7 @@
  * generation router and `saveToGallery` helper.
  */
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   Loader2,
   Play,
