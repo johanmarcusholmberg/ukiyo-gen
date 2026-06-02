@@ -271,6 +271,7 @@ export default function StyleLab() {
 
     setRunning(false);
     setCancelRequested(false);
+    cancelRef.current = false;
     toast({
       title: "Style Lab run finished",
       description: `${prompts.length} prompt${prompts.length === 1 ? "" : "s"} processed.`,
