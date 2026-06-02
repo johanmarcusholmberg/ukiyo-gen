@@ -34,6 +34,7 @@ import MediterraneanHeritage from "./pages/MediterraneanHeritage";
 import Blend from "./pages/Blend";
 import StyleCompare from "./pages/StyleCompare";
 import BatchStudio from "./pages/BatchStudio";
+import StyleLab from "./pages/StyleLab";
 import NotFound from "./pages/NotFound";
 import ProviderDebug from "./pages/ProviderDebug";
 import StyleControlPanel from "./pages/StyleControlPanel";
