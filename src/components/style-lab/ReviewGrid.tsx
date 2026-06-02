@@ -365,6 +365,16 @@ export default function ReviewGrid() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Collection assignment modal */}
+      <Dialog open={!!collectionFor} onOpenChange={(open) => !open && setCollectionFor(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="font-display">Add to collection</DialogTitle>
+          </DialogHeader>
+          {collectionFor && <CollectionsManager imageId={collectionFor.id} />}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
