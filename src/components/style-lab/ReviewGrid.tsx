@@ -85,8 +85,11 @@ export default function ReviewGrid() {
   const [minRating, setMinRating] = useState<number>(0);
   const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
+  const [showRejected, setShowRejected] = useState(false);
+  const [rejectedOnly, setRejectedOnly] = useState(false);
 
   const [preview, setPreview] = useState<ReviewImage | null>(null);
+  const [collectionFor, setCollectionFor] = useState<ReviewImage | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
