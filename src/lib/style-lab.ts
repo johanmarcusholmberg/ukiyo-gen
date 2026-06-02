@@ -107,7 +107,7 @@ export async function fetchReviewImages(opts: FetchReviewOptions = {}): Promise<
   let q = supabase
     .from("generated_images")
     .select(
-      "id,prompt,mode,created_at,storage_path,master_storage_path,generation_provider,generation_model,execution_route,fallback_used,rating,is_favorite,is_archived,deleted_at",
+      "id,prompt,mode,created_at,storage_path,master_storage_path,generation_provider,generation_model,execution_route,fallback_used,rating,is_favorite,is_archived,is_rejected,deleted_at",
     )
     .is("deleted_at", null)
     .order("created_at", { ascending: false })
@@ -121,6 +121,11 @@ export async function fetchReviewImages(opts: FetchReviewOptions = {}): Promise<
     q = q.eq("is_archived", true);
   } else if (!opts.includeArchived) {
     q = q.eq("is_archived", false);
+  }
+  if (opts.rejectedOnly) {
+    q = q.eq("is_rejected", true);
+  } else if (!opts.includeRejected) {
+    q = q.eq("is_rejected", false);
   }
 
   const { data, error } = await q;
