@@ -35,6 +35,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import ReviewGrid from "@/components/style-lab/ReviewGrid";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
@@ -310,7 +312,14 @@ export default function StyleLab() {
       </header>
 
       <main className="pb-20 px-4">
-        <div className="max-w-5xl mx-auto space-y-6">
+        <div className="max-w-5xl mx-auto">
+          <Tabs defaultValue="test" className="space-y-6">
+            <TabsList className="grid grid-cols-2 w-full max-w-xs mx-auto">
+              <TabsTrigger value="test" className="font-display text-sm">Test</TabsTrigger>
+              <TabsTrigger value="review" className="font-display text-sm">Review</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="test" className="space-y-6">
           {/* Controls */}
           <section className="rounded-md border border-border bg-card p-4 space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -442,6 +451,12 @@ export default function StyleLab() {
               </div>
             </section>
           )}
+            </TabsContent>
+
+            <TabsContent value="review">
+              <ReviewGrid />
+            </TabsContent>
+          </Tabs>
         </div>
       </main>
     </div>
