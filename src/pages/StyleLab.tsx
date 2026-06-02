@@ -281,6 +281,7 @@ export default function StyleLab() {
 
   const stop = () => {
     if (!running) return;
+    cancelRef.current = true;
     setCancelRequested(true);
     toast({
       title: "Stopping after current prompt",
