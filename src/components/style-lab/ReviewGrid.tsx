@@ -16,11 +16,14 @@ import {
   Star,
   Heart,
   Archive as ArchiveIcon,
+  Ban,
+  FolderPlus,
   X,
   RefreshCcw,
 } from "lucide-react";
 
 import RouteBadge from "@/components/RouteBadge";
+import CollectionsManager from "@/components/CollectionsManager";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
