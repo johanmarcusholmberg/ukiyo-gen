@@ -35,6 +35,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import ReviewGrid from "@/components/style-lab/ReviewGrid";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
