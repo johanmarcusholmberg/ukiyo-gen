@@ -115,6 +115,7 @@ export default function StyleLab() {
   const [results, setResults] = useState<ResultRow[]>([]);
   const [running, setRunning] = useState(false);
   const [cancelRequested, setCancelRequested] = useState(false);
+  const cancelRef = useRef(false);
   const [currentIndex, setCurrentIndex] = useState(0);
 
   const prompts = useMemo(() => parsePromptList(promptText), [promptText]);
