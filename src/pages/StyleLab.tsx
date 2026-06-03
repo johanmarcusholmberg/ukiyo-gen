@@ -38,6 +38,7 @@ import {
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import ReviewGrid from "@/components/style-lab/ReviewGrid";
 import InsightsPanel from "@/components/style-lab/InsightsPanel";
+import CollectionsWorkspace from "@/components/style-lab/CollectionsWorkspace";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
