@@ -316,10 +316,11 @@ export default function StyleLab() {
       <main className="pb-20 px-4">
         <div className="max-w-5xl mx-auto">
           <Tabs defaultValue="test" className="space-y-6">
-            <TabsList className="grid grid-cols-3 w-full max-w-md mx-auto">
+            <TabsList className="grid grid-cols-4 w-full max-w-xl mx-auto">
               <TabsTrigger value="test" className="font-display text-sm">Test</TabsTrigger>
               <TabsTrigger value="review" className="font-display text-sm">Review</TabsTrigger>
               <TabsTrigger value="insights" className="font-display text-sm">Insights</TabsTrigger>
+              <TabsTrigger value="collections" className="font-display text-sm">Collections</TabsTrigger>
             </TabsList>
 
             <TabsContent value="test" className="space-y-6">
