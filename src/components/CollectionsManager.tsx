@@ -18,6 +18,7 @@ import {
   addToCollection,
   removeFromCollection,
   fetchCollectionImageIds,
+  CollectionValidationError,
   type Collection,
 } from "@/lib/collections";
 import { toast } from "sonner";
