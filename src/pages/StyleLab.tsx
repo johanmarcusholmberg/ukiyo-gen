@@ -203,7 +203,7 @@ export default function StyleLab() {
         });
 
         // Save to gallery with provider/model/route preserved.
-        await saveToGallery({
+        const { id: savedRowId } = await saveToGallery({
           imageUrl: response.imageUrl,
           prompt,
           mode: selectedStyleKey,
@@ -221,13 +221,6 @@ export default function StyleLab() {
           masterImageUrl: response.imageUrl,
         });
 
-        // Best-effort: find the just-saved row id so per-image actions can target it.
-        const recent = await findRecentGalleryRow({
-          prompt,
-          mode: selectedStyleKey,
-          withinSeconds: 90,
-        });
-
         setResults((prev) =>
           prev.map((r, idx) =>
             idx === i
@@ -236,7 +229,7 @@ export default function StyleLab() {
                   status: "saved",
                   imageUrl: response.imageUrl,
                   response,
-                  savedRowId: recent?.id,
+                  savedRowId,
                 }
               : r,
           ),
