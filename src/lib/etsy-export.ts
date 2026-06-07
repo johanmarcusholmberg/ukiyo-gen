@@ -160,6 +160,9 @@ export async function renderSizeToBlob(
     ctx,
   });
 
+  if (exportFormat) {
+    return encodeCanvasToBlob(canvas, exportFormat);
+  }
   return new Promise((resolve, reject) => {
     canvas.toBlob(
       (blob) => (blob ? resolve(blob) : reject(new Error("Canvas export failed"))),
