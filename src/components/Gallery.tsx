@@ -55,6 +55,11 @@ import EtsyMockupDialog from "@/components/EtsyMockupDialog";
 import RouteBadge from "@/components/RouteBadge";
 import ImportArtworkButton from "@/components/gallery/ImportArtworkButton";
 import { downloadWithBleed, renderRawWithBleed } from "@/lib/raw-download";
+import {
+  buildExportFilename,
+  EXPORT_FORMAT_META,
+  getStoredExportFormat,
+} from "@/lib/export-formats";
 
 interface GalleryImage {
   id: string;
