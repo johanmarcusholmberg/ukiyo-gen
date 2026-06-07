@@ -222,7 +222,9 @@ export function getPrintExportSize(
   return {
     width: Math.round(f.widthCm * CM_TO_INCHES * dpi),
     height: Math.round(f.heightCm * CM_TO_INCHES * dpi),
+  };
 }
+
 
 /**
  * Convenience: width / height in millimetres for a format id. Derived
