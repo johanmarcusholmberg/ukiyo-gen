@@ -104,6 +104,7 @@ export async function renderSizeToBlob(
     withBorder = false,
     borderRatio = 0.04,
     backgroundColor = "#ffffff",
+    exportFormat,
     quality = 0.92,
     mimeType = "image/jpeg",
     bleedMm = DEFAULT_BLEED_MM,
