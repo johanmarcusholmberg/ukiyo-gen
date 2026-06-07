@@ -19,7 +19,6 @@ import {
 } from "@/lib/print-export";
 import {
   type ExportFormat,
-  EXPORT_FORMAT_META,
   encodeCanvasToBlob,
   getStoredExportFormat,
 } from "@/lib/export-formats";
