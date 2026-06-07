@@ -128,8 +128,6 @@ const STYLE_CARDS = [
   { emoji: "🌿", label: "Botanical", desc: "Scientific watercolour plant studies", to: "/botanical" },
 ];
 
-import { downloadWithBleed, renderRawWithBleed } from "@/lib/raw-download";
-
 const downloadImage = (url: string, filename: string) =>
   downloadWithBleed(url, { filename });
 
