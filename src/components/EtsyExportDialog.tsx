@@ -39,6 +39,7 @@ import {
   assessTemplateReadiness,
 } from "@/lib/etsy-export";
 import { cn } from "@/lib/utils";
+import { DEFAULT_BLEED_MM, DEFAULT_SAFE_MM, computeBleedPixels } from "@/lib/bleed-config";
 
 export interface EtsyExportDialogProps {
   open: boolean;
