@@ -620,11 +620,14 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
     try {
       const zip = new JSZip();
       const selectedImages = images.filter((img) => selectedIds.has(img.id));
+      const fmt = getStoredExportFormat();
+      const meta = EXPORT_FORMAT_META[fmt];
       await Promise.all(
         selectedImages.map(async (img, i) => {
           // Every poster in the ZIP carries the static 3 mm bleed.
-          const r = await renderRawWithBleed(img.publicUrl, {});
-          zip.file(`art-${i + 1}-${img.mode}_bleed${r.bleedMm}mm.png`, r.blob);
+          const r = await renderRawWithBleed(img.publicUrl, { exportFormat: fmt });
+          const baseName = `art-${i + 1}-${img.mode}`;
+          zip.file(buildExportFilename(baseName, fmt, r.bleedMm), r.blob);
         })
       );
       const content = await zip.generateAsync({ type: "blob" });
@@ -636,7 +639,7 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
       URL.revokeObjectURL(url);
       setSelectMode(false);
       setSelectedIds(new Set());
-      toast.success(`Downloaded ${selectedImages.length} images`, { duration: 3000 });
+      toast.success(`Downloaded ${selectedImages.length} ${meta.label} files`, { duration: 3000 });
     } catch (e) {
       console.error(e);
       toast.error("Failed to create ZIP");
