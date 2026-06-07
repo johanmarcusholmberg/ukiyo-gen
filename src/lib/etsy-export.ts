@@ -89,29 +89,23 @@ export async function renderSizeToBlob(
     backgroundColor = "#ffffff",
     quality = 0.92,
     mimeType = "image/jpeg",
+    bleedMm = DEFAULT_BLEED_MM,
+    safeMm = DEFAULT_SAFE_MM,
   } = opts;
 
-  const targetW = size.pixelWidth;
-  const targetH = size.pixelHeight;
-
-  const canvas = document.createElement("canvas");
-  canvas.width = targetW;
-  canvas.height = targetH;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) throw new Error("Canvas 2D context unavailable in this browser");
-
-  // Background (visible behind any letterbox / border)
-  ctx.fillStyle = backgroundColor;
-  ctx.fillRect(0, 0, targetW, targetH);
-
-  // Compute usable area (shrunk if we draw a border)
-  const margin = withBorder
-    ? Math.round(Math.min(targetW, targetH) * borderRatio)
-    : 0;
-  const innerW = targetW - margin * 2;
-  const innerH = targetH - margin * 2;
-
-  // Contain-fit: scale source so it fits inside the inner area without crop
+  // 1. Render artwork into an intermediate TRIM canvas.
+  const trimW = size.pixelWidth;
+  const trimH = size.pixelHeight;
+  const trimCanvas = document.createElement("canvas");
+  trimCanvas.width = trimW;
+  trimCanvas.height = trimH;
+  const trimCtx = trimCanvas.getContext("2d");
+  if (!trimCtx) throw new Error("Canvas 2D context unavailable in this browser");
+  trimCtx.fillStyle = backgroundColor;
+  trimCtx.fillRect(0, 0, trimW, trimH);
+  const margin = withBorder ? Math.round(Math.min(trimW, trimH) * borderRatio) : 0;
+  const innerW = trimW - margin * 2;
+  const innerH = trimH - margin * 2;
   const srcW = source.naturalWidth;
   const srcH = source.naturalHeight;
   const scale = Math.min(innerW / srcW, innerH / srcH);
@@ -119,11 +113,34 @@ export async function renderSizeToBlob(
   const drawH = Math.round(srcH * scale);
   const drawX = margin + Math.round((innerW - drawW) / 2);
   const drawY = margin + Math.round((innerH - drawH) / 2);
+  trimCtx.imageSmoothingEnabled = true;
+  trimCtx.imageSmoothingQuality = "high";
+  trimCtx.drawImage(source, 0, 0, srcW, srcH, drawX, drawY, drawW, drawH);
 
-  // Slightly better resampling on large downscales
-  ctx.imageSmoothingEnabled = true;
-  ctx.imageSmoothingQuality = "high";
-  ctx.drawImage(source, 0, 0, srcW, srcH, drawX, drawY, drawW, drawH);
+  // 2. Allocate the final TRIM + BLEED canvas and edge-stretch into it.
+  const bleed = computeBleedPixels({
+    trimWidthPx: trimW,
+    trimHeightPx: trimH,
+    dpi: size.dpi,
+    bleedMm,
+    safeMm,
+  });
+  assertCanvasWithinLimits(bleed.exportWidth, bleed.exportHeight);
+  const canvas = document.createElement("canvas");
+  canvas.width = bleed.exportWidth;
+  canvas.height = bleed.exportHeight;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Canvas 2D context unavailable in this browser");
+
+  renderWithBleed({
+    source: trimCanvas,
+    sourceWidth: trimW,
+    sourceHeight: trimH,
+    trimWidth: trimW,
+    trimHeight: trimH,
+    bleedPx: bleed.bleedPx,
+    ctx,
+  });
 
   return new Promise((resolve, reject) => {
     canvas.toBlob(
