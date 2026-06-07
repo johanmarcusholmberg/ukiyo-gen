@@ -22,6 +22,13 @@ import {
   type ExportSize,
   type ExportTemplate,
 } from "@/lib/export-templates";
+import {
+  DEFAULT_BLEED_MM,
+  DEFAULT_SAFE_MM,
+  computeBleedPixels,
+  renderWithBleed,
+} from "@/lib/bleed-config";
+import { assertCanvasWithinLimits } from "@/lib/print-export";
 
 /* ------------------------------------------------------------------ */
 /* Image loading                                                      */
