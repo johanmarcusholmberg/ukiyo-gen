@@ -756,7 +756,7 @@ export default function ImageGenerator({
       );
 
       toast({
-        title: `Print export ready · ${selectedPrintFormat.label}`,
+        title: `Print export ready · ${selectedPrintFormat.label} · ${fmtMeta.label}`,
         description: summary,
       });
     } catch (err: any) {
