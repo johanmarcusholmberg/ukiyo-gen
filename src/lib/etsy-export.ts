@@ -66,6 +66,10 @@ export interface RenderSizeOptions {
   quality?: number;
   /** Output mime type — JPEG keeps the ZIP small */
   mimeType?: string;
+  /** Override default bleed in mm. */
+  bleedMm?: number;
+  /** Override default safe-area inset in mm. */
+  safeMm?: number;
 }
 
 /**
