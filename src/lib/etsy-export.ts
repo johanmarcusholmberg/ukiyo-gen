@@ -62,10 +62,15 @@ export interface RenderSizeOptions {
   borderRatio?: number;
   /** Background colour shown when fitting / bordering. */
   backgroundColor?: string;
-  /** JPEG quality 0..1 */
+  /** Legacy JPEG quality 0..1. Ignored when {@link exportFormat} is set. */
   quality?: number;
-  /** Output mime type — JPEG keeps the ZIP small */
+  /** Legacy mime type. Ignored when {@link exportFormat} is set. */
   mimeType?: string;
+  /**
+   * Multi-format encoder selection (PNG / JPEG / PDF). When set, drives
+   * the final encoding and overrides the legacy mime/quality fields.
+   */
+  exportFormat?: ExportFormat;
   /** Override default bleed in mm. */
   bleedMm?: number;
   /** Override default safe-area inset in mm. */
