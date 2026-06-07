@@ -215,10 +215,15 @@ export async function buildEtsyExportBundle(
           withBorder: !!opts.withBorder,
         });
         const ext = (opts.render?.mimeType ?? "image/jpeg").split("/")[1] ?? "jpg";
-        const fileName = buildExportFileName(size, {
+        const baseName = buildExportFileName(size, {
           ext: ext === "jpeg" ? "jpg" : ext,
           withBorder: opts.withBorder,
         });
+        // Tag every file with its baked-in bleed so printers see it at a glance.
+        const fileName = baseName.replace(
+          /(\.[a-zA-Z0-9]+)$/,
+          `_bleed${DEFAULT_BLEED_MM}mm$1`,
+        );
         folder.file(fileName, blob);
         rendered.push(size);
         bytes += blob.size;
@@ -243,16 +248,23 @@ export async function buildEtsyExportBundle(
       opts.template.description,
       "",
       `All files are ${opts.template.defaultDpi} DPI, ready for high-quality printing.`,
+      `Every file includes a ${DEFAULT_BLEED_MM} mm bleed on all sides (baked into the pixels via edge extension).`,
+      `Keep important content at least ${DEFAULT_SAFE_MM} mm inside the trim line.`,
       opts.withBorder
-        ? "Each file includes a uniform white border for framing."
-        : "Files are full-bleed within their target pixel dimensions.",
+        ? "A uniform white border is rendered inside the trim area for framing."
+        : "Artwork extends to the trim edge; the bleed wraps the entire poster.",
       "",
-      "Included sizes:",
+      "Included sizes (trim → export):",
       ...opts.template.ratios.flatMap((g) => [
         `  ${g.label}:`,
-        ...g.sizes.map(
-          (s) => `    - ${s.label}  (${s.pixelWidth} × ${s.pixelHeight} px)`,
-        ),
+        ...g.sizes.map((s) => {
+          const b = computeBleedPixels({
+            trimWidthPx: s.pixelWidth,
+            trimHeightPx: s.pixelHeight,
+            dpi: s.dpi,
+          });
+          return `    - ${s.label}  trim ${s.pixelWidth}×${s.pixelHeight} px → export ${b.exportWidth}×${b.exportHeight} px`;
+        }),
       ]),
     ].join("\n"),
   );
