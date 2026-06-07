@@ -204,38 +204,66 @@ export async function preparePrintExport(
   const upscaleFactor = targetW / norm.outputWidth;
   const upscaleApplied = upscaleFactor > 1.01;
 
-  // 3. Render to canvas — validate first so we never allocate an oversized buffer.
+  // 3a. Render trim image to an intermediate canvas at exact trim size.
   assertCanvasWithinLimits(targetW, targetH);
-  const canvas = document.createElement("canvas");
-  canvas.width = targetW;
-  canvas.height = targetH;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) {
+  const trimCanvas = document.createElement("canvas");
+  trimCanvas.width = targetW;
+  trimCanvas.height = targetH;
+  const trimCtx = trimCanvas.getContext("2d");
+  if (!trimCtx) {
     throw new Error("Could not allocate canvas for export — your browser may be low on memory.");
   }
-
-  // Fill with pad colour first (visible if padding is used)
-  ctx.fillStyle = opts.padColor ?? "#ffffff";
-  ctx.fillRect(0, 0, targetW, targetH);
+  trimCtx.fillStyle = opts.padColor ?? "#ffffff";
+  trimCtx.fillRect(0, 0, targetW, targetH);
+  trimCtx.imageSmoothingEnabled = true;
+  trimCtx.imageSmoothingQuality = "high";
 
   if (norm.method === "crop") {
-    // Draw cropped region scaled to full canvas
-    ctx.drawImage(
+    trimCtx.drawImage(
       img,
       norm.cropX, norm.cropY, norm.cropWidth, norm.cropHeight,
       0, 0, targetW, targetH,
     );
   } else if (norm.method === "pad") {
-    // Draw source centred within padded canvas
     const drawX = Math.round(norm.padLeft * (targetW / norm.outputWidth));
     const drawY = Math.round(norm.padTop * (targetH / norm.outputHeight));
     const drawW = Math.round(srcW * (targetW / norm.outputWidth));
     const drawH = Math.round(srcH * (targetH / norm.outputHeight));
-    ctx.drawImage(img, 0, 0, srcW, srcH, drawX, drawY, drawW, drawH);
+    trimCtx.drawImage(img, 0, 0, srcW, srcH, drawX, drawY, drawW, drawH);
   } else {
-    // No ratio correction needed — just scale
-    ctx.drawImage(img, 0, 0, srcW, srcH, 0, 0, targetW, targetH);
+    trimCtx.drawImage(img, 0, 0, srcW, srcH, 0, 0, targetW, targetH);
   }
+
+  // 3b. Compute trim DPI from the format's physical size, then derive bleed.
+  const CM_TO_INCHES = 1 / 2.54;
+  const trimDpi = Math.round(targetW / (format.widthCm * CM_TO_INCHES));
+  const bleed = computeBleedPixels({
+    trimWidthPx: targetW,
+    trimHeightPx: targetH,
+    dpi: trimDpi,
+    bleedMm: opts.bleedMm ?? DEFAULT_BLEED_MM,
+    safeMm: opts.safeMm ?? DEFAULT_SAFE_MM,
+  });
+
+  // 3c. Allocate the final export canvas at trim + 2 × bleed and render
+  //     via edge-stretch. Validate the inflated size first.
+  assertCanvasWithinLimits(bleed.exportWidth, bleed.exportHeight);
+  const canvas = document.createElement("canvas");
+  canvas.width = bleed.exportWidth;
+  canvas.height = bleed.exportHeight;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) {
+    throw new Error("Could not allocate canvas for export — your browser may be low on memory.");
+  }
+  renderWithBleed({
+    source: trimCanvas,
+    sourceWidth: targetW,
+    sourceHeight: targetH,
+    trimWidth: targetW,
+    trimHeight: targetH,
+    bleedPx: bleed.bleedPx,
+    ctx,
+  });
 
   // 4. Export blob
   const mime = opts.mimeType ?? "image/png";
@@ -249,8 +277,16 @@ export async function preparePrintExport(
 
   return {
     blob,
-    width: targetW,
-    height: targetH,
+    width: bleed.exportWidth,
+    height: bleed.exportHeight,
+    trimWidth: targetW,
+    trimHeight: targetH,
+    exportWidth: bleed.exportWidth,
+    exportHeight: bleed.exportHeight,
+    bleedMm: bleed.bleedMm,
+    safeMm: bleed.safeMm,
+    bleedPx: bleed.bleedPx,
+    dpi: trimDpi,
     tier,
     upscaleApplied,
     upscaleFactor: Math.round(upscaleFactor * 100) / 100,
