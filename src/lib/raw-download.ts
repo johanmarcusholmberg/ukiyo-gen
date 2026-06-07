@@ -186,6 +186,4 @@ export async function downloadWithBleed(
   return result;
 }
 
-// Re-export so legacy imports keep working.
-export { getExportFormatMeta };
 
