@@ -622,9 +622,9 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
       const selectedImages = images.filter((img) => selectedIds.has(img.id));
       await Promise.all(
         selectedImages.map(async (img, i) => {
-          const res = await fetch(img.publicUrl);
-          const blob = await res.blob();
-          zip.file(`art-${i + 1}-${img.mode}.png`, blob);
+          // Every poster in the ZIP carries the static 3 mm bleed.
+          const r = await renderRawWithBleed(img.publicUrl, {});
+          zip.file(`art-${i + 1}-${img.mode}_bleed${r.bleedMm}mm.png`, r.blob);
         })
       );
       const content = await zip.generateAsync({ type: "blob" });
