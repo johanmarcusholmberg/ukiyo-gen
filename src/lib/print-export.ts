@@ -20,6 +20,13 @@ import {
   computeBleedPixels,
   renderWithBleed,
 } from "@/lib/bleed-config";
+import {
+  type ExportFormat,
+  DEFAULT_EXPORT_FORMAT,
+  buildExportFilename,
+  encodeCanvasToBlob,
+  getExportFormatMeta,
+} from "@/lib/export-formats";
 
 export interface PrintExportResult {
   /** The final high-res blob ready for download / upload (includes bleed). */
