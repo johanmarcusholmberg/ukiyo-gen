@@ -70,8 +70,15 @@ export default function EtsyExportDialog({
 }: EtsyExportDialogProps) {
   const [templateId, setTemplateId] = useState<string>(DEFAULT_EXPORT_TEMPLATE_ID);
   const [withBorder, setWithBorder] = useState(false);
+  const [exportFormat, setExportFormat] = useState<ExportFormat>(() => getStoredExportFormat());
   const [exporting, setExporting] = useState(false);
   const [progress, setProgress] = useState({ done: 0, total: 0, label: "" });
+
+  const handleFormatChange = (v: string) => {
+    const next = v as ExportFormat;
+    setExportFormat(next);
+    setStoredExportFormat(next);
+  };
 
   const template: ExportTemplate =
     getExportTemplate(templateId) ?? EXPORT_TEMPLATES[0]!;
