@@ -121,6 +121,10 @@ export interface PrintExportOptions {
   mimeType?: string;
   /** JPEG/WebP quality 0-1 */
   quality?: number;
+  /** Override the default bleed (mm). Defaults to {@link DEFAULT_BLEED_MM}. */
+  bleedMm?: number;
+  /** Override the safe-area inset (mm). Defaults to {@link DEFAULT_SAFE_MM}. */
+  safeMm?: number;
 }
 
 /**
