@@ -73,16 +73,6 @@ import {
   type ProviderId as StrictnessProviderId,
 } from "@/lib/style-strictness";
 
-const downloadImage = async (dataUrl: string, filename: string) => {
-  const res = await fetch(dataUrl);
-  const blob = await res.blob();
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
-};
 
 interface ImageGeneratorProps {
   mode: string;
