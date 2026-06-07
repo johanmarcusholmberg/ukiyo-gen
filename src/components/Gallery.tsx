@@ -54,6 +54,7 @@ import EtsyExportDialog from "@/components/EtsyExportDialog";
 import EtsyMockupDialog from "@/components/EtsyMockupDialog";
 import RouteBadge from "@/components/RouteBadge";
 import ImportArtworkButton from "@/components/gallery/ImportArtworkButton";
+import { downloadWithBleed, renderRawWithBleed } from "@/lib/raw-download";
 
 interface GalleryImage {
   id: string;
@@ -128,16 +129,8 @@ const STYLE_CARDS = [
   { emoji: "🌿", label: "Botanical", desc: "Scientific watercolour plant studies", to: "/botanical" },
 ];
 
-const downloadImage = async (url: string, filename: string) => {
-  const res = await fetch(url);
-  const blob = await res.blob();
-  const blobUrl = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = blobUrl;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(blobUrl);
-};
+const downloadImage = (url: string, filename: string) =>
+  downloadWithBleed(url, { filename });
 
 // ── Skeleton grid ──────────────────────────────────────────────────────────────
 function GallerySkeleton() {
@@ -629,9 +622,9 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
       const selectedImages = images.filter((img) => selectedIds.has(img.id));
       await Promise.all(
         selectedImages.map(async (img, i) => {
-          const res = await fetch(img.publicUrl);
-          const blob = await res.blob();
-          zip.file(`art-${i + 1}-${img.mode}.png`, blob);
+          // Every poster in the ZIP carries the static 3 mm bleed.
+          const r = await renderRawWithBleed(img.publicUrl, {});
+          zip.file(`art-${i + 1}-${img.mode}_bleed${r.bleedMm}mm.png`, r.blob);
         })
       );
       const content = await zip.generateAsync({ type: "blob" });

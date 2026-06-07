@@ -22,6 +22,13 @@ import {
   type ExportSize,
   type ExportTemplate,
 } from "@/lib/export-templates";
+import {
+  DEFAULT_BLEED_MM,
+  DEFAULT_SAFE_MM,
+  computeBleedPixels,
+  renderWithBleed,
+} from "@/lib/bleed-config";
+import { assertCanvasWithinLimits } from "@/lib/print-export";
 
 /* ------------------------------------------------------------------ */
 /* Image loading                                                      */
@@ -59,6 +66,10 @@ export interface RenderSizeOptions {
   quality?: number;
   /** Output mime type — JPEG keeps the ZIP small */
   mimeType?: string;
+  /** Override default bleed in mm. */
+  bleedMm?: number;
+  /** Override default safe-area inset in mm. */
+  safeMm?: number;
 }
 
 /**
@@ -82,29 +93,23 @@ export async function renderSizeToBlob(
     backgroundColor = "#ffffff",
     quality = 0.92,
     mimeType = "image/jpeg",
+    bleedMm = DEFAULT_BLEED_MM,
+    safeMm = DEFAULT_SAFE_MM,
   } = opts;
 
-  const targetW = size.pixelWidth;
-  const targetH = size.pixelHeight;
-
-  const canvas = document.createElement("canvas");
-  canvas.width = targetW;
-  canvas.height = targetH;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) throw new Error("Canvas 2D context unavailable in this browser");
-
-  // Background (visible behind any letterbox / border)
-  ctx.fillStyle = backgroundColor;
-  ctx.fillRect(0, 0, targetW, targetH);
-
-  // Compute usable area (shrunk if we draw a border)
-  const margin = withBorder
-    ? Math.round(Math.min(targetW, targetH) * borderRatio)
-    : 0;
-  const innerW = targetW - margin * 2;
-  const innerH = targetH - margin * 2;
-
-  // Contain-fit: scale source so it fits inside the inner area without crop
+  // 1. Render artwork into an intermediate TRIM canvas.
+  const trimW = size.pixelWidth;
+  const trimH = size.pixelHeight;
+  const trimCanvas = document.createElement("canvas");
+  trimCanvas.width = trimW;
+  trimCanvas.height = trimH;
+  const trimCtx = trimCanvas.getContext("2d");
+  if (!trimCtx) throw new Error("Canvas 2D context unavailable in this browser");
+  trimCtx.fillStyle = backgroundColor;
+  trimCtx.fillRect(0, 0, trimW, trimH);
+  const margin = withBorder ? Math.round(Math.min(trimW, trimH) * borderRatio) : 0;
+  const innerW = trimW - margin * 2;
+  const innerH = trimH - margin * 2;
   const srcW = source.naturalWidth;
   const srcH = source.naturalHeight;
   const scale = Math.min(innerW / srcW, innerH / srcH);
@@ -112,11 +117,34 @@ export async function renderSizeToBlob(
   const drawH = Math.round(srcH * scale);
   const drawX = margin + Math.round((innerW - drawW) / 2);
   const drawY = margin + Math.round((innerH - drawH) / 2);
+  trimCtx.imageSmoothingEnabled = true;
+  trimCtx.imageSmoothingQuality = "high";
+  trimCtx.drawImage(source, 0, 0, srcW, srcH, drawX, drawY, drawW, drawH);
 
-  // Slightly better resampling on large downscales
-  ctx.imageSmoothingEnabled = true;
-  ctx.imageSmoothingQuality = "high";
-  ctx.drawImage(source, 0, 0, srcW, srcH, drawX, drawY, drawW, drawH);
+  // 2. Allocate the final TRIM + BLEED canvas and edge-stretch into it.
+  const bleed = computeBleedPixels({
+    trimWidthPx: trimW,
+    trimHeightPx: trimH,
+    dpi: size.dpi,
+    bleedMm,
+    safeMm,
+  });
+  assertCanvasWithinLimits(bleed.exportWidth, bleed.exportHeight);
+  const canvas = document.createElement("canvas");
+  canvas.width = bleed.exportWidth;
+  canvas.height = bleed.exportHeight;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Canvas 2D context unavailable in this browser");
+
+  renderWithBleed({
+    source: trimCanvas,
+    sourceWidth: trimW,
+    sourceHeight: trimH,
+    trimWidth: trimW,
+    trimHeight: trimH,
+    bleedPx: bleed.bleedPx,
+    ctx,
+  });
 
   return new Promise((resolve, reject) => {
     canvas.toBlob(
@@ -187,10 +215,15 @@ export async function buildEtsyExportBundle(
           withBorder: !!opts.withBorder,
         });
         const ext = (opts.render?.mimeType ?? "image/jpeg").split("/")[1] ?? "jpg";
-        const fileName = buildExportFileName(size, {
+        const baseName = buildExportFileName(size, {
           ext: ext === "jpeg" ? "jpg" : ext,
           withBorder: opts.withBorder,
         });
+        // Tag every file with its baked-in bleed so printers see it at a glance.
+        const fileName = baseName.replace(
+          /(\.[a-zA-Z0-9]+)$/,
+          `_bleed${DEFAULT_BLEED_MM}mm$1`,
+        );
         folder.file(fileName, blob);
         rendered.push(size);
         bytes += blob.size;
@@ -215,16 +248,23 @@ export async function buildEtsyExportBundle(
       opts.template.description,
       "",
       `All files are ${opts.template.defaultDpi} DPI, ready for high-quality printing.`,
+      `Every file includes a ${DEFAULT_BLEED_MM} mm bleed on all sides (baked into the pixels via edge extension).`,
+      `Keep important content at least ${DEFAULT_SAFE_MM} mm inside the trim line.`,
       opts.withBorder
-        ? "Each file includes a uniform white border for framing."
-        : "Files are full-bleed within their target pixel dimensions.",
+        ? "A uniform white border is rendered inside the trim area for framing."
+        : "Artwork extends to the trim edge; the bleed wraps the entire poster.",
       "",
-      "Included sizes:",
+      "Included sizes (trim → export):",
       ...opts.template.ratios.flatMap((g) => [
         `  ${g.label}:`,
-        ...g.sizes.map(
-          (s) => `    - ${s.label}  (${s.pixelWidth} × ${s.pixelHeight} px)`,
-        ),
+        ...g.sizes.map((s) => {
+          const b = computeBleedPixels({
+            trimWidthPx: s.pixelWidth,
+            trimHeightPx: s.pixelHeight,
+            dpi: s.dpi,
+          });
+          return `    - ${s.label}  trim ${s.pixelWidth}×${s.pixelHeight} px → export ${b.exportWidth}×${b.exportHeight} px`;
+        }),
       ]),
     ].join("\n"),
   );
