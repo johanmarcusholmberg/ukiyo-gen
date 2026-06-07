@@ -226,6 +226,9 @@ export async function buildEtsyExportBundle(
   let bytes = 0;
   let done = 0;
 
+  const exportFormat: ExportFormat = opts.exportFormat ?? DEFAULT_EXPORT_FORMAT;
+  const formatMeta = getExportFormatMeta(exportFormat);
+
   for (const group of opts.template.ratios) {
     const folder = zip.folder(ratioFolderName(group));
     if (!folder) continue;
@@ -234,18 +237,17 @@ export async function buildEtsyExportBundle(
         opts.onProgress?.(done, total, size);
         const blob = await renderSizeToBlob(source, size, {
           ...opts.render,
+          exportFormat,
           withBorder: !!opts.withBorder,
         });
-        const ext = (opts.render?.mimeType ?? "image/jpeg").split("/")[1] ?? "jpg";
         const baseName = buildExportFileName(size, {
-          ext: ext === "jpeg" ? "jpg" : ext,
+          // Provide a placeholder ext — buildExportFilename rewrites it.
+          ext: "tmp",
           withBorder: opts.withBorder,
         });
-        // Tag every file with its baked-in bleed so printers see it at a glance.
-        const fileName = baseName.replace(
-          /(\.[a-zA-Z0-9]+)$/,
-          `_bleed${DEFAULT_BLEED_MM}mm$1`,
-        );
+        // Format-aware filename: strips the placeholder ext, appends the
+        // _bleed{N}mm suffix, then the format extension.
+        const fileName = buildExportFilename(baseName, exportFormat, DEFAULT_BLEED_MM);
         folder.file(fileName, blob);
         rendered.push(size);
         bytes += blob.size;
