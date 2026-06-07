@@ -32,7 +32,6 @@ import { assertCanvasWithinLimits } from "@/lib/print-export";
 import {
   type ExportFormat,
   DEFAULT_EXPORT_FORMAT,
-  EXPORT_FORMAT_META,
   buildExportFilename,
   encodeCanvasToBlob,
   getExportFormatMeta,
