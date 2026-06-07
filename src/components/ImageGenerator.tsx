@@ -729,26 +729,30 @@ export default function ImageGenerator({
       // operates on local state since nothing has been persisted yet.
       const exportSource = enhancedImageUrl || baseImageUrl || imageUrl;
 
+      const fmt = getStoredExportFormat();
+      const fmtMeta = EXPORT_FORMAT_META[fmt];
       const result = await preparePrintExport({
         imageUrl: exportSource,
         printFormatId: selectedPrintFormat.id,
         padColor: paperColor === "cream" ? "#f5f0e8" : "#ffffff",
+        exportFormat: fmt,
       });
 
       const { summary } = formatExportDescription(
         result.tier, result.upscaleApplied, result.upscaleFactor, result.width, result.height,
       );
 
-      const exportFilename = `print-${selectedPrintFormat.id}-${Date.now()}.png`;
+      const exportFilename = `print-${selectedPrintFormat.id}-${Date.now()}.${fmtMeta.extension}`;
       const { error: uploadErr } = await supabase.storage
         .from("print-exports")
-        .upload(exportFilename, result.blob, { contentType: "image/png" });
+        .upload(exportFilename, result.blob, { contentType: fmtMeta.mimeType });
 
       if (uploadErr) console.warn("Print export upload skipped:", uploadErr);
 
       downloadPrintExport(
         result.blob,
-        `${styleConfig.downloadPrefix}-${mode}-print-${selectedPrintFormat.id}-${Date.now()}.png`,
+        `${styleConfig.downloadPrefix}-${mode}-print-${selectedPrintFormat.id}-${Date.now()}`,
+        fmt,
       );
 
       toast({
