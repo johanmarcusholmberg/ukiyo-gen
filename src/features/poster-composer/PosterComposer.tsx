@@ -36,6 +36,7 @@ import {
   measurePosterOverlay,
   autoFitPosterText,
 } from "./usePosterComposer";
+import { getStoredExportFormat, EXPORT_FORMAT_META } from "@/lib/export-formats";
 import { POSTER_TEMPLATE_LIST, getPosterTemplate } from "./poster-templates";
 import type {
   PosterTemplateId,
