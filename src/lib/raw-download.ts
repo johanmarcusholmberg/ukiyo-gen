@@ -33,7 +33,6 @@ import {
   type ExportFormat,
   buildExportFilename,
   encodeCanvasToBlob,
-  getExportFormatMeta,
   getStoredExportFormat,
 } from "@/lib/export-formats";
 
