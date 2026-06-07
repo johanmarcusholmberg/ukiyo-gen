@@ -284,15 +284,22 @@ export async function preparePrintExport(
     ctx,
   });
 
-  // 4. Export blob
-  const mime = opts.mimeType ?? "image/png";
-  const blob = await new Promise<Blob>((resolve, reject) => {
-    canvas.toBlob(
-      (b) => (b ? resolve(b) : reject(new Error("Canvas export failed"))),
-      mime,
-      opts.quality ?? 1.0,
-    );
-  });
+  // 4. Encode the final canvas in the requested format.
+  //    `exportFormat` (PNG / JPEG / PDF) is the new path; legacy callers
+  //    that only set `mimeType` still work via the fallback branch.
+  let blob: Blob;
+  if (opts.exportFormat) {
+    blob = await encodeCanvasToBlob(canvas, opts.exportFormat);
+  } else {
+    const mime = opts.mimeType ?? "image/png";
+    blob = await new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob(
+        (b) => (b ? resolve(b) : reject(new Error("Canvas export failed"))),
+        mime,
+        opts.quality ?? 1.0,
+      );
+    });
+  }
 
   return {
     blob,
