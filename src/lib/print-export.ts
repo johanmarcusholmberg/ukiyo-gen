@@ -14,14 +14,36 @@
 
 import { normalizeRatio, type RatioNormalizationResult } from "@/lib/ratio-normalization";
 import { type PrintFormat, getPrintFormat } from "@/lib/print-formats";
+import {
+  DEFAULT_BLEED_MM,
+  DEFAULT_SAFE_MM,
+  computeBleedPixels,
+  renderWithBleed,
+} from "@/lib/bleed-config";
 
 export interface PrintExportResult {
-  /** The final high-res blob ready for download / upload */
+  /** The final high-res blob ready for download / upload (includes bleed). */
   blob: Blob;
-  /** Final width */
+  /** Final exported width in pixels (trim + 2 × bleed). */
   width: number;
-  /** Final height */
+  /** Final exported height in pixels (trim + 2 × bleed). */
   height: number;
+  /** Trim width in pixels (customer-visible). */
+  trimWidth: number;
+  /** Trim height in pixels (customer-visible). */
+  trimHeight: number;
+  /** Exported canvas width in pixels (== width). */
+  exportWidth: number;
+  /** Exported canvas height in pixels (== height). */
+  exportHeight: number;
+  /** Bleed in millimetres applied to each side. */
+  bleedMm: number;
+  /** Safe-area inset in millimetres from the trim edge. */
+  safeMm: number;
+  /** Bleed in pixels at the export DPI. */
+  bleedPx: number;
+  /** Effective DPI of the trim canvas. */
+  dpi: number;
   /** Which quality tier was achieved */
   tier: "preferred" | "fallback" | "source";
   /** Whether upscaling was applied */
