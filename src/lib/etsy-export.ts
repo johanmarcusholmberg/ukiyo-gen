@@ -272,6 +272,7 @@ export async function buildEtsyExportBundle(
       opts.template.description,
       "",
       `All files are ${opts.template.defaultDpi} DPI, ready for high-quality printing.`,
+      `Output format: ${formatMeta.label} (.${formatMeta.extension}) — ${formatMeta.description}`,
       `Every file includes a ${DEFAULT_BLEED_MM} mm bleed on all sides (baked into the pixels via edge extension).`,
       `Keep important content at least ${DEFAULT_SAFE_MM} mm inside the trim line.`,
       opts.withBorder
