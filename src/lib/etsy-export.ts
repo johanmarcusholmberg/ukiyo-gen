@@ -29,6 +29,14 @@ import {
   renderWithBleed,
 } from "@/lib/bleed-config";
 import { assertCanvasWithinLimits } from "@/lib/print-export";
+import {
+  type ExportFormat,
+  DEFAULT_EXPORT_FORMAT,
+  EXPORT_FORMAT_META,
+  buildExportFilename,
+  encodeCanvasToBlob,
+  getExportFormatMeta,
+} from "@/lib/export-formats";
 
 /* ------------------------------------------------------------------ */
 /* Image loading                                                      */
