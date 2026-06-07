@@ -213,6 +213,28 @@ export default function EtsyExportDialog({
             )}
           </div>
 
+          {/* Export format selector */}
+          <div className="space-y-1.5">
+            <Label className="font-display text-xs text-muted-foreground">Export format</Label>
+            <Select value={exportFormat} onValueChange={handleFormatChange} disabled={exporting}>
+              <SelectTrigger className="font-display">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {EXPORT_FORMATS.map((f) => (
+                  <SelectItem key={f} value={f} className="font-display">
+                    {EXPORT_FORMAT_META[f].label} — {EXPORT_FORMAT_META[f].description}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="font-display text-[11px] text-muted-foreground">
+              Every size in the ZIP will be encoded as{" "}
+              <strong>{EXPORT_FORMAT_META[exportFormat].label}</strong>{" "}
+              (.{EXPORT_FORMAT_META[exportFormat].extension}).
+            </p>
+          </div>
+
           {/* Bleed notice */}
           <div className="rounded-md border border-border/60 bg-background p-3 space-y-1">
             <p className="font-display text-xs">
