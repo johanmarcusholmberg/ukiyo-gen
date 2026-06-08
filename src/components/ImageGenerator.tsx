@@ -238,7 +238,7 @@ export default function ImageGenerator({
   const recommendedRecipe = useMemo(
     () =>
       resolveUpscaleRecipe({
-        styleKey: styleConfig.styleKey,
+        styleKey: variantStyleKey,
         mode,
         generatorFamily: generatorFamilyFromProvider(lastProviderUsed),
         printIntent: generationMode === "print-ready",
