@@ -103,6 +103,16 @@ export default function ImageGenerator({
   const modeLabel = isTertiary ? styleConfig.tertiaryTabLabel! : isThemed ? styleConfig.themedTabLabel : styleConfig.freestyleTabLabel;
   const generateLabel = isTertiary ? styleConfig.tertiaryGenerateLabel! : isThemed ? styleConfig.themedGenerateLabel : styleConfig.freestyleGenerateLabel;
 
+  // Variant-specific style key (e.g. "lineart-minimal", "lineart-freestyle", "lineart").
+  // STYLE_RULES is keyed by this AND resolveEdgeFnForStyle expects this. Passing the
+  // base styleConfig.styleKey makes every variant resolve to the themed edge function
+  // and themed prompt rules (e.g. Minimal Lines acting like Ink Scenes).
+  const variantStyleKey = isTertiary
+    ? (styleConfig.tertiaryModeValue ?? styleConfig.styleKey)
+    : isThemed
+    ? styleConfig.styleKey
+    : (styleConfig.freestyleModeValue ?? `${styleConfig.styleKey}-freestyle`);
+
   const persistKey = `${styleConfig.styleKey}-${mode}` as any;
 
   const {
