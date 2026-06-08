@@ -1130,7 +1130,7 @@ export default function ImageGenerator({
           <ProviderComparison
             request={{
               prompt: (isInlineEditing ? editPrompt : prompt).trim(),
-              styleKey: styleConfig.styleKey,
+              styleKey: variantStyleKey,
               aspectRatio: effectiveAspectRatio,
               backgroundStyle,
               printMode: true,
