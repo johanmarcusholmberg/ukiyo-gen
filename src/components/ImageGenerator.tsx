@@ -243,7 +243,7 @@ export default function ImageGenerator({
         generatorFamily: generatorFamilyFromProvider(lastProviderUsed),
         printIntent: generationMode === "print-ready",
       }),
-    [styleConfig.styleKey, mode, lastProviderUsed, generationMode],
+    [variantStyleKey, mode, lastProviderUsed, generationMode],
   );
 
   /**
