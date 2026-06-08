@@ -71,50 +71,56 @@ export default function ProviderComparison({
     setRunning(true);
     setSlots(Object.fromEntries(adapters.map((a) => [a.id, { loading: true }])));
 
-    const { generateImage } = await import("@/lib/generation-router");
+    // Each comparison slot must hit ONE specific adapter so the user can
+    // judge per-provider quality. We deliberately bypass the router here —
+    // the router's fallback chain (e.g. sdxl → replicate → lovable) would
+    // disguise a direct-provider failure as a successful result from a
+    // different provider, defeating the entire point of "compare".
+    const [
+      { generateWithLovableAdapter },
+      { generateWithGeminiAdapter },
+      { generateWithReplicateAdapter },
+      { generateWithOpenAIAdapter },
+    ] = await Promise.all([
+      import("@/lib/generation-providers/lovable"),
+      import("@/lib/generation-providers/gemini"),
+      import("@/lib/generation-providers/replicate"),
+      import("@/lib/generation-providers/openai"),
+    ]);
 
     await Promise.all(
       adapters.map(async (a) => {
         try {
-          // Each comparison slot must hit ONE specific path so the user can
-          // judge per-provider quality. Map adapter id → the right call:
-          //   - "lovable"   → call Lovable adapter directly (the gateway path)
-          //   - "replicate" → router with pref "sdxl" (now → direct Replicate)
-          //   - "gemini"    → router with pref "gemini" (direct Gemini)
-          //   - "openai"    → router with pref "openai" (direct OpenAI gpt-image-1)
+          const baseReq = {
+            prompt: request.prompt,
+            styleKey: request.styleKey,
+            aspectRatio: request.aspectRatio,
+            backgroundStyle: request.backgroundStyle,
+            printMode: request.printMode,
+            referenceImageUrl: request.referenceImageUrl,
+            isEdit: request.isEdit,
+          };
           let response;
           if (a.id === "lovable") {
-            const { generateWithLovableAdapter } = await import(
-              "@/lib/generation-providers/lovable",
-            );
             response = await generateWithLovableAdapter({
-              prompt: request.prompt,
-              styleKey: request.styleKey,
-              aspectRatio: request.aspectRatio,
-              backgroundStyle: request.backgroundStyle,
-              printMode: request.printMode,
+              ...baseReq,
               providerPreference: "sdxl",
-              referenceImageUrl: request.referenceImageUrl,
-              isEdit: request.isEdit,
+            });
+          } else if (a.id === "gemini") {
+            response = await generateWithGeminiAdapter({
+              ...baseReq,
+              providerPreference: "gemini",
+            });
+          } else if (a.id === "replicate") {
+            response = await generateWithReplicateAdapter({
+              ...baseReq,
+              providerPreference: "sdxl",
             });
           } else {
-            const pref =
-              a.id === "gemini"
-                ? "gemini"
-                : a.id === "openai"
-                ? "openai"
-                : "sdxl";
-            const out = await generateImage({
-              prompt: request.prompt,
-              styleKey: request.styleKey,
-              aspectRatio: request.aspectRatio,
-              backgroundStyle: request.backgroundStyle,
-              printMode: request.printMode,
-              providerPreference: pref,
-              referenceImageUrl: request.referenceImageUrl,
-              isEdit: request.isEdit,
+            response = await generateWithOpenAIAdapter({
+              ...baseReq,
+              providerPreference: "openai",
             });
-            response = out.response;
           }
           setSlots((prev) => ({ ...prev, [a.id]: { loading: false, response } }));
         } catch (err: any) {
