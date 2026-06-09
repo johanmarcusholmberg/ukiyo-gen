@@ -514,8 +514,43 @@ function ComparisonSlot({ label, state, request, onPick, onSave }: ComparisonSlo
 }
 
 function DebugLog({ debug }: { debug: SlotDebug }) {
+  const { toast } = useToast();
   const [open, setOpen] = useState(!debug.ok);
-  const json = JSON.stringify(debug, null, 2);
+  // Defensive: JSON.stringify can throw on circular refs even after sanitize.
+  let json: string;
+  try {
+    json = JSON.stringify(debug, null, 2);
+  } catch {
+    json = JSON.stringify(
+      { adapter: debug.adapter, ok: debug.ok, error: "[unserializable debug payload]" },
+      null,
+      2,
+    );
+  }
+  const copy = async () => {
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(json);
+      } else {
+        // Fallback for non-secure contexts
+        const ta = document.createElement("textarea");
+        ta.value = json;
+        ta.style.position = "fixed";
+        ta.style.opacity = "0";
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand("copy");
+        document.body.removeChild(ta);
+      }
+      toast({ title: "Debug log copied" });
+    } catch {
+      toast({
+        title: "Copy failed",
+        description: "Select the log text manually.",
+        variant: "destructive",
+      });
+    }
+  };
   return (
     <div className="border-t border-border">
       <button
@@ -527,19 +562,20 @@ function DebugLog({ debug }: { debug: SlotDebug }) {
           {debug.ok ? "Debug log" : "Error log"}
           {debug.httpStatus ? ` · HTTP ${debug.httpStatus}` : ""}
           {` · ${debug.elapsedMs}ms`}
+          {debug.truncated ? " · truncated" : ""}
         </span>
         <span className="font-display text-[10px] text-muted-foreground">
           {open ? "Hide" : "Show"}
         </span>
       </button>
       {open && (
-        <div className="p-2 space-y-1.5">
+        <div className="p-2 space-y-1.5 min-w-0">
           <pre className="text-[10px] leading-snug max-h-64 overflow-auto bg-muted/40 rounded-sm p-2 whitespace-pre-wrap break-all">
             {json}
           </pre>
           <button
             type="button"
-            onClick={() => navigator.clipboard?.writeText(json)}
+            onClick={copy}
             className="font-display text-[10px] underline text-muted-foreground hover:text-foreground"
           >
             Copy log
