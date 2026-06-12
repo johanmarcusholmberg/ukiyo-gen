@@ -770,16 +770,28 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
 
     setBulkUpscaling(false);
     setBulkUpscaleProgress(null);
-    setSelectMode(false);
-    setSelectedIds(new Set());
 
     const succeeded = targets.length - failed;
     if (failed === 0) {
-      toast.success(`Enhanced ${succeeded} image${succeeded > 1 ? "s" : ""} (HD 4×)`, { duration: 3000 });
-    } else if (succeeded === 0) {
-      toast.error(`Bulk upscale failed for all ${failed} image${failed > 1 ? "s" : ""}`);
+      // Full success — exit select mode for a clean slate.
+      setSelectMode(false);
+      setSelectedIds(new Set());
+      toast.success(
+        `Enhanced ${succeeded} image${succeeded > 1 ? "s" : ""} (HD 4×)`,
+        { duration: 3000 },
+      );
     } else {
-      toast.warning(`Enhanced ${succeeded} · ${failed} failed`);
+      // Partial / total failure — keep select mode on and leave selection
+      // intact so the user can retry without having to re-pick everything.
+      if (succeeded === 0) {
+        toast.error(
+          `Bulk upscale failed for all ${failed} image${failed > 1 ? "s" : ""}. Selection preserved — try again.`,
+        );
+      } else {
+        toast.warning(
+          `Enhanced ${succeeded} · ${failed} failed. Selection preserved — re-run to retry.`,
+        );
+      }
     }
   };
 
