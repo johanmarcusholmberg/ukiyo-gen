@@ -187,7 +187,15 @@ export default function AdminAssets() {
   const [search, setSearch] = useState("");
   const [providerFilter, setProviderFilter] = useState<string>("all");
   const [readinessFilter, setReadinessFilter] = useState<string>("all");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  // Honor a `?status=needs_review` (etc.) query param so /review can deep-link here.
+  const [searchParams] = useSearchParams();
+  const initialStatus = (() => {
+    const s = searchParams.get("status");
+    return s && ["draft", "needs_review", "approved", "rejected", "archived"].includes(s)
+      ? s
+      : "all";
+  })();
+  const [statusFilter, setStatusFilter] = useState<string>(initialStatus);
   const [folderFilter, setFolderFilter] = useState<string>("all");
   const [hasUpscaledFilter, setHasUpscaledFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("newest");
