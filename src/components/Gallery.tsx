@@ -770,16 +770,28 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
 
     setBulkUpscaling(false);
     setBulkUpscaleProgress(null);
-    setSelectMode(false);
-    setSelectedIds(new Set());
 
     const succeeded = targets.length - failed;
     if (failed === 0) {
-      toast.success(`Enhanced ${succeeded} image${succeeded > 1 ? "s" : ""} (HD 4×)`, { duration: 3000 });
-    } else if (succeeded === 0) {
-      toast.error(`Bulk upscale failed for all ${failed} image${failed > 1 ? "s" : ""}`);
+      // Full success — exit select mode for a clean slate.
+      setSelectMode(false);
+      setSelectedIds(new Set());
+      toast.success(
+        `Enhanced ${succeeded} image${succeeded > 1 ? "s" : ""} (HD 4×)`,
+        { duration: 3000 },
+      );
     } else {
-      toast.warning(`Enhanced ${succeeded} · ${failed} failed`);
+      // Partial / total failure — keep select mode on and leave selection
+      // intact so the user can retry without having to re-pick everything.
+      if (succeeded === 0) {
+        toast.error(
+          `Bulk upscale failed for all ${failed} image${failed > 1 ? "s" : ""}. Selection preserved — try again.`,
+        );
+      } else {
+        toast.warning(
+          `Enhanced ${succeeded} · ${failed} failed. Selection preserved — re-run to retry.`,
+        );
+      }
     }
   };
 
@@ -1294,10 +1306,11 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
       )}
 
       {/* Load more — fetches the next server-side page and appends to the
-          in-memory set. Client-side pagination above still paginates whatever
-          has been loaded so far. */}
-      {hasMore && filtered.length > 0 && (
-        <div className="flex justify-center mt-6">
+          in-memory set. Always shown while the server has more rows, even
+          when current filters hide every loaded image (the next page may
+          contain matches). */}
+      {hasMore && (
+        <div className="flex flex-col items-center gap-1 mt-6">
           <Button
             variant="outline"
             size="sm"
@@ -1311,6 +1324,11 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
               <><ChevronDown className="h-3 w-3 mr-1" /> Load more</>
             )}
           </Button>
+          {filtered.length === 0 && images.length > 0 && (
+            <p className="font-display text-[11px] text-muted-foreground">
+              No matches in the first {images.length} images — try loading more.
+            </p>
+          )}
         </div>
       )}
 
