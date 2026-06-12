@@ -69,6 +69,8 @@ const App = () => (
               <Route path="/admin" element={protect(<AdminUsers />, true)} />
               <Route path="/admin/users" element={protect(<AdminUsers />, true)} />
               <Route path="/admin/assets" element={protect(<AdminAssets />, true)} />
+              {/* Thin alias — opens AdminAssets pre-filtered to needs_review. */}
+              <Route path="/review" element={protect(<Review />, true)} />
 
               {/* Generators (protected) */}
               <Route path="/" element={protect(<Index />)} />
