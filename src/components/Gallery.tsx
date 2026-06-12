@@ -2,8 +2,9 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import {
   Download, Loader2, Trash2, Pencil, ChevronLeft, ChevronRight,
   Sun, FileText, Share2, CheckSquare, Square, Sparkles, Search,
-  FolderPlus, FolderMinus, Printer, ArrowUpCircle, ShoppingBag, Layers,
+  FolderPlus, FolderMinus, Printer, ArrowUpCircle, ShoppingBag, Layers, ChevronDown,
 } from "lucide-react";
+
 import type { StyleConfig } from "@/lib/style-config";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -55,11 +56,14 @@ import EtsyMockupDialog from "@/components/EtsyMockupDialog";
 import RouteBadge from "@/components/RouteBadge";
 import ImportArtworkButton from "@/components/gallery/ImportArtworkButton";
 import { downloadWithBleed, renderRawWithBleed } from "@/lib/raw-download";
+import { runReplicateUpscale } from "@/lib/upscale-providers/replicate";
+import { updateEnhancedAsset } from "@/lib/gallery";
 import {
   buildExportFilename,
   EXPORT_FORMAT_META,
   getStoredExportFormat,
 } from "@/lib/export-formats";
+
 
 interface GalleryImage {
   id: string;
