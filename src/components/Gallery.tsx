@@ -1262,6 +1262,44 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
                 : `Enhance ${selectedIds.size} (HD 4×)`}
             </Button>
 
+            {/* Bulk review actions — write to admin_status (single source of truth). */}
+            <Button
+              variant="outline"
+              size="sm"
+              className="font-display text-xs h-8 border-primary/40 text-primary hover:bg-primary/10"
+              onClick={() => handleBulkStatus("approved")}
+              disabled={bulkStatusBusy || bulkUpscaling}
+              title="Mark selected as Approved"
+            >
+              {bulkStatusBusy
+                ? <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                : <CheckCircle2 className="h-3 w-3 mr-1" />}
+              Approve {selectedIds.size}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="font-display text-xs h-8 border-destructive/40 text-destructive hover:bg-destructive/10"
+              onClick={() => handleBulkStatus("rejected")}
+              disabled={bulkStatusBusy || bulkUpscaling}
+              title="Mark selected as Rejected"
+            >
+              <XCircle className="h-3 w-3 mr-1" />
+              Reject {selectedIds.size}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="font-display text-xs h-8"
+              onClick={() => handleBulkStatus("needs_review")}
+              disabled={bulkStatusBusy || bulkUpscaling}
+              title="Mark selected as Needs review"
+            >
+              <Clock className="h-3 w-3 mr-1" />
+              Needs review
+            </Button>
+
+
             {allCollections.length > 0 && (
               <Popover open={bulkPopoverOpen} onOpenChange={setBulkPopoverOpen}>
                 <PopoverTrigger asChild>
