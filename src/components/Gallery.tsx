@@ -1172,15 +1172,33 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
 
         {selectMode && selectedIds.size > 0 && (
           <>
-            <Button size="sm" className="font-display text-xs h-8" onClick={handleBatchDownload} disabled={downloading}>
+            <Button size="sm" className="font-display text-xs h-8" onClick={handleBatchDownload} disabled={downloading || bulkUpscaling}>
               {downloading ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Download className="h-3 w-3 mr-1" />}
               Download {selectedIds.size} as ZIP
+            </Button>
+
+            <Button
+              variant="outline"
+              size="sm"
+              className="font-display text-xs h-8 border-primary/40 text-primary hover:bg-primary/10"
+              onClick={handleBulkUpscale}
+              disabled={bulkUpscaling || downloading}
+              title="Run HD 4× (Real-ESRGAN) on each selected image. Already-enhanced images are skipped."
+            >
+              {bulkUpscaling ? (
+                <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+              ) : (
+                <Sparkles className="h-3 w-3 mr-1" />
+              )}
+              {bulkUpscaling && bulkUpscaleProgress
+                ? `Enhancing ${bulkUpscaleProgress.done}/${bulkUpscaleProgress.total}…`
+                : `Enhance ${selectedIds.size} (HD 4×)`}
             </Button>
 
             {allCollections.length > 0 && (
               <Popover open={bulkPopoverOpen} onOpenChange={setBulkPopoverOpen}>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" size="sm" className="font-display text-xs h-8"
+                  <Button variant="outline" size="sm" className="font-display text-xs h-8" disabled={bulkUpscaling}
                     onClick={() => { setBulkAction("add"); setBulkPopoverOpen(true); }}>
                     <FolderPlus className="h-3 w-3 mr-1" /> Add to folder
                   </Button>
@@ -1208,6 +1226,7 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
             )}
           </>
         )}
+
 
         {totalPages > 1 && (
           <div className="flex items-center gap-1 ml-auto">
