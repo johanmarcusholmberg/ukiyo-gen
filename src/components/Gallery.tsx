@@ -1208,9 +1208,22 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
           </SelectContent>
         </Select>
 
-        {(modeFilter !== "all" || ratioFilter !== "all" || searchQuery !== "") && (
+        {/* Review status filter — `admin_status` is the source of truth. */}
+        <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as AdminStatus | "all")}>
+          <SelectTrigger className="w-[140px] font-display text-xs h-8"><SelectValue placeholder="Status" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All statuses</SelectItem>
+            <SelectItem value="needs_review">Needs review</SelectItem>
+            <SelectItem value="approved">Approved</SelectItem>
+            <SelectItem value="rejected">Rejected</SelectItem>
+            <SelectItem value="archived">Archived</SelectItem>
+            <SelectItem value="draft">Draft</SelectItem>
+          </SelectContent>
+        </Select>
+
+        {(modeFilter !== "all" || ratioFilter !== "all" || searchQuery !== "" || statusFilter !== "all") && (
           <Button variant="ghost" size="sm" className="font-display text-xs h-8 px-2"
-            onClick={() => { setModeFilter("all"); setRatioFilter("all"); setSearchQuery(""); }}>✕</Button>
+            onClick={() => { setModeFilter("all"); setRatioFilter("all"); setSearchQuery(""); setStatusFilter("all"); }}>✕</Button>
         )}
 
         <Button
