@@ -459,6 +459,17 @@ export default function ImageGenerator({
         });
       }
 
+      // Best-effort: persist the user's prompt (not the posterHint-augmented
+      // version) to their personal prompt history. Never blocks generation.
+      void savePromptHistory({
+        prompt: activePrompt.trim(),
+        mode: variantStyleKey,
+        provider: gen.generationProvider ?? null,
+        model: gen.generationModel ?? null,
+      }).then((row) => {
+        if (row) setPromptHistoryRefresh((n) => n + 1);
+      });
+
       if (isInlineEditing) {
         setPrompt(activePrompt.trim());
         setIsInlineEditing(false);
