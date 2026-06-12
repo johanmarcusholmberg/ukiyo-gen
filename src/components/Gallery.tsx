@@ -819,10 +819,14 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
       setBgResult(null);
       setSelected(null);
       setLoading(true);
-      fetchGalleryImages()
-        .then((imgs) => setImages(styleModes ? imgs.filter((img: any) => styleModes.includes(img.mode)) : imgs))
+      fetchGalleryImages({ limit: PAGE_SIZE, offset: 0, modes: styleModes ?? undefined })
+        .then((imgs) => {
+          setImages(imgs as GalleryImage[]);
+          setHasMore(imgs.length === PAGE_SIZE);
+        })
         .catch(console.error)
         .finally(() => setLoading(false));
+
     } catch (err: any) {
       toast.error(err.message || "Failed to save");
     } finally {
