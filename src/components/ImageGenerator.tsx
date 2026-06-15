@@ -41,6 +41,8 @@ import GeneratedImageActions from "@/components/generation/GeneratedImageActions
 import ImagePreviewMockups from "@/components/ImagePreviewMockups";
 import PromptHistoryPanel from "@/components/PromptHistoryPanel";
 import { savePromptHistory } from "@/lib/prompt-history";
+import { useVariantFanOut, type VariantTile } from "@/features/generation/useVariantFanOut";
+import VariantGrid from "@/features/generation/VariantGrid";
 import type { StyleConfig } from "@/lib/style-config";
 import { type QualityTarget, getResolutionForPrintSize, formatResolution } from "@/lib/print-resolution";
 import { PRINT_FORMATS, type PrintFormat, formatExportDescription, getPosterPromptHint } from "@/lib/print-formats";
@@ -180,6 +182,11 @@ export default function ImageGenerator({
   const [lastSelectedAdapterId, setLastSelectedAdapterId] = useState<string | null>(null);
   const [lastModelFallbackReason, setLastModelFallbackReason] = useState<string | null>(null);
   const [compareOpen, setCompareOpen] = useState(false);
+  // Variant fan-out — generate 4 in parallel and let the user pick.
+  const [variantMode, setVariantMode] = useState(false);
+  const [savedTileIds, setSavedTileIds] = useState<Set<number>>(new Set());
+  const [savingTileId, setSavingTileId] = useState<number | null>(null);
+  const variantFanOut = useVariantFanOut(4);
   // Bumped after each successful prompt-history save so the panel reloads.
   const [promptHistoryRefresh, setPromptHistoryRefresh] = useState(0);
   // Poster Composer integration (additive — does not change the generator).
@@ -302,6 +309,110 @@ export default function ImageGenerator({
         description: "Could not upscale — original image preserved.",
         variant: "destructive",
       });
+    }
+  };
+
+  /**
+   * Build the same NormalizedGenerationRequest used by `generate()` so the
+   * single-shot and variant-fan-out paths produce comparable results.
+   */
+  const buildGenerationRequest = () => {
+    const activePrompt = isInlineEditing ? editPrompt : prompt;
+    const referenceImageUrl =
+      isInlineEditing && imageUrl ? imageUrl : effectiveSourceImageUrl || undefined;
+    const strictnessProvider: StrictnessProviderId =
+      generatorPref === "auto" ? "sdxl" : (generatorPref as StrictnessProviderId);
+    const effectiveStrictness = getDefaultStrictness({
+      styleKey: variantStyleKey,
+      provider: strictnessProvider,
+    });
+    return {
+      prompt: activePrompt.trim(),
+      styleKey: variantStyleKey,
+      aspectRatio: effectiveAspectRatio,
+      backgroundStyle,
+      printMode: true,
+      providerPreference: generatorPref,
+      referenceImageUrl,
+      isEdit: !!referenceImageUrl,
+      strictness: effectiveStrictness,
+      posterFormatId: selectedPrintFormat.id,
+      posterFormatHint: getPosterPromptHint(selectedPrintFormat.id),
+      targetAspectRatio: selectedPrintFormat.aspectRatioDecimal,
+      modelId: modelSelection.modelId ?? undefined,
+      qualityProfile: modelSelection.qualityProfile,
+      generationStrategy: modelSelection.generationStrategy ?? undefined,
+    };
+  };
+
+  const startVariantFanOut = async () => {
+    const activePrompt = isInlineEditing ? editPrompt : prompt;
+    if (!activePrompt.trim()) return;
+    setSavedTileIds(new Set());
+    setSavingTileId(null);
+    await variantFanOut.start(buildGenerationRequest());
+  };
+
+  const handleKeepVariant = async (tile: VariantTile, response: NormalizedGenerationResponse) => {
+    if (savedTileIds.has(tile.id) || savingTileId !== null) return;
+    setSavingTileId(tile.id);
+    try {
+      const finalPrompt = (isInlineEditing ? editPrompt : prompt).trim();
+      const isPrint = generationMode === "print-ready";
+      const { baseDims, masterDims, readiness } = await probeDimensionsAndReadiness(
+        response.imageUrl,
+        response.imageUrl,
+        isPrint ? selectedPrintFormat.id : null,
+      );
+      const baseOpts = buildSaveOptions();
+      await saveToGallery({
+        ...baseOpts,
+        imageUrl: response.imageUrl,
+        prompt: finalPrompt,
+        baseImageUrl: response.imageUrl,
+        masterImageUrl: response.imageUrl,
+        baseWidthPx: baseDims?.width,
+        baseHeightPx: baseDims?.height,
+        masterWidth: masterDims?.width,
+        masterHeight: masterDims?.height,
+        actualWidthPx: masterDims?.width ?? baseDims?.width,
+        actualHeightPx: masterDims?.height ?? baseDims?.height,
+        printReadiness: readiness,
+        generationProvider: response.generationProvider,
+        generationModel: response.generationModel,
+        providerStrategy: response.strategy,
+        fallbackUsed: response.fallbackUsed,
+        executionRoute: response.executionRoute,
+        assetRole: "base_generation",
+        enhanced: false,
+        enhancedImageUrl: undefined,
+        enhancementModel: undefined,
+        upscaleFactor: undefined,
+      });
+      // Best-effort prompt-history save (mirrors generate()).
+      void savePromptHistory({
+        prompt: finalPrompt,
+        mode: variantStyleKey,
+        provider: response.generationProvider ?? null,
+        model: response.generationModel ?? null,
+      }).then((row) => {
+        if (row) setPromptHistoryRefresh((n) => n + 1);
+      });
+      setSavedTileIds((prev) => {
+        const next = new Set(prev);
+        next.add(tile.id);
+        return next;
+      });
+      toast({ title: "Variant saved", description: "Added to your gallery." });
+      onImageSaved?.();
+    } catch (e) {
+      toast({
+        title: "Save failed",
+        description: e instanceof Error ? e.message : "Could not save variant.",
+        variant: "destructive",
+      });
+    } finally {
+      setSavingTileId(null);
     }
   };
 
@@ -1239,20 +1350,67 @@ export default function ImageGenerator({
           />
         )}
 
+        {/* Variant fan-out toggle — opt-in. When on, the Generate button
+            runs 4 parallel calls and shows a pick-best grid below. */}
+        {!isEditMode && !isInlineEditing && (
+          <label className="flex items-center justify-between gap-2 px-1">
+            <span className="flex items-center gap-2">
+              <Switch
+                checked={variantMode}
+                onCheckedChange={(v) => setVariantMode(!!v)}
+                aria-label="Generate 4 variants"
+              />
+              <span className="font-display text-xs text-foreground">Generate 4 variants</span>
+            </span>
+            <span className="font-display text-[10px] text-muted-foreground">
+              ~4× cost · pick the best
+            </span>
+          </label>
+        )}
+
         <Button
-          onClick={generate}
-          disabled={loading || (!isInlineEditing && !prompt.trim()) || (isInlineEditing && !editPrompt.trim())}
+          onClick={variantMode && !isEditMode && !isInlineEditing ? startVariantFanOut : generate}
+          disabled={
+            loading ||
+            variantFanOut.isRunning ||
+            (!isInlineEditing && !prompt.trim()) ||
+            (isInlineEditing && !editPrompt.trim())
+          }
           className="w-full font-display text-sm tracking-wider h-11"
         >
-          {loading ? (
+          {loading || variantFanOut.isRunning ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              {isInlineEditing || isEditMode ? "Editing…" : "Painting…"}
+              {isInlineEditing || isEditMode
+                ? "Editing…"
+                : variantFanOut.isRunning
+                ? "Generating variants…"
+                : "Painting…"}
             </>
+          ) : isInlineEditing || isEditMode ? (
+            "Apply Changes"
+          ) : variantMode ? (
+            "Generate 4 variants"
           ) : (
-            isInlineEditing || isEditMode ? "Apply Changes" : (generateLabel || "Generate poster")
+            generateLabel || "Generate poster"
           )}
         </Button>
+
+        {variantMode && (
+          <VariantGrid
+            tiles={variantFanOut.tiles}
+            busy={variantFanOut.isRunning}
+            onKeep={handleKeepVariant}
+            onDiscard={variantFanOut.discard}
+            onRetry={variantFanOut.retryOne}
+            onDiscardAll={() => {
+              variantFanOut.discardAll();
+              setSavedTileIds(new Set());
+            }}
+            savedTileIds={savedTileIds}
+            savingTileId={savingTileId}
+          />
+        )}
       </div>
 
       <div className="relative min-h-[300px] flex items-center justify-center rounded-sm border border-border bg-card paper-texture">
