@@ -182,6 +182,11 @@ export default function ImageGenerator({
   const [lastSelectedAdapterId, setLastSelectedAdapterId] = useState<string | null>(null);
   const [lastModelFallbackReason, setLastModelFallbackReason] = useState<string | null>(null);
   const [compareOpen, setCompareOpen] = useState(false);
+  // Variant fan-out — generate 4 in parallel and let the user pick.
+  const [variantMode, setVariantMode] = useState(false);
+  const [savedTileIds, setSavedTileIds] = useState<Set<number>>(new Set());
+  const [savingTileId, setSavingTileId] = useState<number | null>(null);
+  const variantFanOut = useVariantFanOut(4);
   // Bumped after each successful prompt-history save so the panel reloads.
   const [promptHistoryRefresh, setPromptHistoryRefresh] = useState(0);
   // Poster Composer integration (additive — does not change the generator).
