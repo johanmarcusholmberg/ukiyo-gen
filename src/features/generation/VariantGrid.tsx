@@ -155,13 +155,40 @@ function VariantTileCard({
 
       {tile.status === "done" && r && (
         <div className="p-2 space-y-1.5 border-t border-border/60">
-          {printFormatId && dims && (
-            <PrintQualityIndicator
-              actualWidthPx={dims.width}
-              actualHeightPx={dims.height}
-              printFormatId={printFormatId}
-              compact
-            />
+          {dims && (
+            printFormatId ? (
+              <PrintQualityIndicator
+                actualWidthPx={dims.width}
+                actualHeightPx={dims.height}
+                printFormatId={printFormatId}
+                compact
+              />
+            ) : (
+              <TooltipProvider delayDuration={200}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="cursor-help">
+                      <PrintQualityIndicator
+                        actualWidthPx={dims.width}
+                        actualHeightPx={dims.height}
+                        printFormatId={null}
+                        compact
+                      />
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="max-w-[220px]">
+                    <PrintQualityIndicator
+                      actualWidthPx={dims.width}
+                      actualHeightPx={dims.height}
+                      printFormatId={null}
+                    />
+                    <p className="font-display text-[11px] text-muted-foreground mt-1">
+                      Select a print format for precise targeting.
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )
           )}
           <div className="flex items-center justify-between gap-2">
             <span className="font-display text-[10px] text-muted-foreground truncate">
