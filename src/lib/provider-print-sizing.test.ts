@@ -9,10 +9,11 @@
  */
 import { describe, it, expect, vi } from "vitest";
 
+import { PROVIDER_MODEL_REGISTRY } from "@/lib/generation-providers/registry";
+
 // Helper to flip a model's flexible/imageSize/seed flags inside one test.
 function overrideModel(id: string, patch: Record<string, unknown>) {
-  const mod = require("@/lib/generation-providers/registry");
-  const original = mod.PROVIDER_MODEL_REGISTRY.find((m: any) => m.id === id);
+  const original = PROVIDER_MODEL_REGISTRY.find((m) => m.id === id);
   if (!original) throw new Error(`unknown model ${id}`);
   Object.assign(original, patch);
 }
@@ -21,7 +22,7 @@ import {
   resolvePrintSize,
   supportsDeterministicSeedReplay,
 } from "./provider-print-sizing";
-import { PRINT_FORMATS, getPrintFormat } from "./print-formats";
+import { PRINT_FORMATS } from "./print-formats";
 
 describe("resolvePrintSize — preview/standard intent (legacy)", () => {
   it("returns today's small SDXL map for preview", () => {
