@@ -62,9 +62,14 @@ import { updateEnhancedAsset } from "@/lib/gallery";
 import { bulkSetImageAdminStatus, type AdminStatus } from "@/lib/style-lab";
 import {
   buildExportFilename,
+  EXPORT_FORMATS,
   EXPORT_FORMAT_META,
   getStoredExportFormat,
+  setStoredExportFormat,
+  type ExportFormat,
 } from "@/lib/export-formats";
+import { recordAssetCostEvent } from "@/lib/cost-events";
+import { buildUpscaleRoutingMetadata } from "@/lib/upscale-routing-metadata";
 
 
 interface GalleryImage {
@@ -230,6 +235,14 @@ function LightboxContent({
   const currentModeLabel = img.upscale_mode
     ? UPSCALE_MODES[img.upscale_mode as UpscaleMode]?.shortLabel ?? img.upscale_mode
     : null;
+  const [exportFormat, setExportFormat] = useState<ExportFormat>(() =>
+    getStoredExportFormat(),
+  );
+  const handleExportFormatChange = (v: string) => {
+    const next = v as ExportFormat;
+    setExportFormat(next);
+    setStoredExportFormat(next);
+  };
   return (
     <div className="space-y-4">
       <ImagePreviewMockups imageUrl={img.masterUrl} alt={img.prompt} />
@@ -405,18 +418,39 @@ function LightboxContent({
           <Button variant="outline" size="sm" onClick={() => downloadImage(img.masterUrl, `art-${img.id}.png`)} className="font-display text-xs">
             <Download className="mr-2 h-4 w-4" /> Download
           </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => onPrintExport(img)}
-            disabled={printExporting}
-            className="font-display text-xs border-primary/30 text-primary hover:bg-primary/10"
-          >
-            {printExporting
-              ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              : <Printer className="mr-2 h-4 w-4" />}
-            {hasExport ? "Re-export Print" : "Export Print"}
-          </Button>
+          <div className="inline-flex items-center gap-1.5">
+            <Select
+              value={exportFormat}
+              onValueChange={handleExportFormatChange}
+              disabled={printExporting}
+            >
+              <SelectTrigger
+                aria-label="Print export format"
+                className="h-8 w-[78px] font-display text-[11px] uppercase tracking-wider"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {EXPORT_FORMATS.map((f) => (
+                  <SelectItem key={f} value={f} className="font-display text-xs">
+                    {EXPORT_FORMAT_META[f].label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onPrintExport(img)}
+              disabled={printExporting}
+              className="font-display text-xs border-primary/30 text-primary hover:bg-primary/10"
+            >
+              {printExporting
+                ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                : <Printer className="mr-2 h-4 w-4" />}
+              {hasExport ? "Re-export Print" : "Export Print"}
+            </Button>
+          </div>
           <Button
             variant="outline"
             size="sm"
@@ -1027,6 +1061,36 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
       };
       setImages((prev) => prev.map((i) => i.id === img.id ? { ...i, ...update } : i));
       if (selected?.id === img.id) setSelected((prev) => prev ? { ...prev, ...update } : prev);
+      // Persist routing-decision metadata for audit. Cost is null on
+      // purpose: the actual upscale cost is captured by the upscale
+      // webhook (async) or provider call (sync) and we don't want to
+      // double-count. Best-effort — failures are logged inside helper.
+      const routingMetadata = buildUpscaleRoutingMetadata(
+        {
+          sourceWidth: img.actual_width_px ?? null,
+          sourceHeight: img.actual_height_px ?? null,
+          posterFormatId: img.print_format_id ?? null,
+          alreadyUpscaled: !!img.upscale_applied,
+          availableModes: ["realesrgan_4x", "tile_4x", "print_plus"],
+        },
+        mode,
+      );
+      void recordAssetCostEvent({
+        imageId: img.id,
+        eventType: "upscale_routing",
+        provider: result.provider,
+        mode: result.mode,
+        estimatedCost: null,
+        status: "succeeded",
+        metadata: {
+          ...routingMetadata,
+          actualScale: result.scale,
+          downshifted: !!result.downshifted,
+          async: !!result.async,
+          recipeId: recipe?.id ?? null,
+          surface: "gallery",
+        },
+      });
       const label = UPSCALE_MODES[result.mode]?.shortLabel ?? "Upscale";
       toast.success(
         result.downshifted
