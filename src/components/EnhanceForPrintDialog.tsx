@@ -66,9 +66,10 @@ const COST_PILL: Record<UpscaleCostTier, { label: string; className: string }> =
 
 /** The modes offered by this dialog, in display order. */
 const OFFERED_MODES: UpscaleMode[] = [
-  "realesrgan_4x", // default — low cost
-  "tile_4x",       // medium cost
-  "print_plus",    // high cost — SUPIR
+  "realesrgan_4x", // default — low cost, 4×
+  "tile_4x",       // medium cost, tiled 4×
+  "tile_8x",       // high cost, tiled 8× (needed to clear 50×70 @ 300 PPI)
+  "print_plus",    // high cost — ESRGAN → SUPIR
 ];
 
 export interface EnhanceForPrintDialogProps {
