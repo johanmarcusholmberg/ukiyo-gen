@@ -92,7 +92,13 @@ function snapForRatio(
   const ratio = (val: number) =>
     axis === "width" ? val / fixedAxis : fixedAxis / val;
   const err = (val: number) => Math.abs(ratio(val) - targetRatio) / targetRatio;
-  return err(floor) <= err(ceil) ? floor : ceil;
+  const errFloor = err(floor);
+  const errCeil = err(ceil);
+  // Within tolerance, prefer the larger candidate (more pixels for print).
+  if (errFloor <= ASPECT_TOLERANCE && errCeil <= ASPECT_TOLERANCE) {
+    return Math.max(floor, ceil);
+  }
+  return errFloor <= errCeil ? floor : ceil;
 }
 
 /** Resolve SDXL pixel dims that preserve the format ratio at print intent. */
