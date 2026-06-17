@@ -57,6 +57,7 @@ export async function generateWithLovableAdapter(
     generationMode: req.printMode ? "print-ready" : "standard",
     printFormatId: req.posterFormatId,
     providerPreference: req.providerPreference === "auto" ? "auto" : "lovable",
+    sizeIntent: req.sizeIntent ?? "standard",
   };
   if (req.strictness) v2Body.strictness = req.strictness;
   if (req.posterFormatHint) v2Body.posterFormatHint = req.posterFormatHint;
@@ -64,6 +65,7 @@ export async function generateWithLovableAdapter(
   if (req.providerModelId) v2Body.providerModelId = req.providerModelId;
   if (req.qualityProfile) v2Body.qualityProfile = req.qualityProfile;
   if (req.generationStrategy) v2Body.generationStrategy = req.generationStrategy;
+
 
   let data: any = null;
   let error: any = null;
