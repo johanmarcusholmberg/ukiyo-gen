@@ -38,6 +38,12 @@ import {
   type UpscaleCostTier,
 } from "@/lib/upscale-modes";
 import type { UpscaleRecipe } from "@/lib/upscale-recipes";
+import {
+  recommendPrintUpscaleRoute,
+  assessSelectedMode,
+  type PrintUpscaleRoutingResult,
+} from "@/lib/print-upscale-routing";
+import { getPrintFormat } from "@/lib/print-formats";
 
 const COST_PILL: Record<UpscaleCostTier, { label: string; className: string }> = {
   free: {
@@ -73,8 +79,12 @@ export interface EnhanceForPrintDialogProps {
   /** Optional source pixel dimensions, used to project output resolution. */
   sourceWidth?: number | null;
   sourceHeight?: number | null;
-  /** Optional recipe — when set, "Use recommended" pre-picks this mode. */
+  /** Optional recipe — used as fallback when print routing has no input. */
   recommendedRecipe?: UpscaleRecipe | null;
+  /** Print format id — enables actual-dimension-aware upscale routing. */
+  posterFormatId?: string | null;
+  /** True if the source asset has already been upscaled at least once. */
+  alreadyUpscaled?: boolean;
   /** Disable the dialog (e.g. when something is already running). */
   disabled?: boolean;
   /** Fired when the user confirms a method. */
@@ -87,15 +97,37 @@ export default function EnhanceForPrintDialog({
   sourceWidth,
   sourceHeight,
   recommendedRecipe,
+  posterFormatId,
+  alreadyUpscaled,
   disabled,
   onConfirm,
 }: EnhanceForPrintDialogProps) {
   const [open, setOpen] = useState(false);
-  const initialMode: UpscaleMode =
-    recommendedRecipe?.recommendedMode &&
-    OFFERED_MODES.includes(recommendedRecipe.recommendedMode)
-      ? recommendedRecipe.recommendedMode
-      : "realesrgan_4x";
+
+  // Actual-dimension-aware print routing (Plan #2). Falls back gracefully
+  // when no posterFormatId / source dimensions are provided.
+  const routing: PrintUpscaleRoutingResult | null = useMemo(() => {
+    if (!posterFormatId) return null;
+    return recommendPrintUpscaleRoute({
+      sourceWidth,
+      sourceHeight,
+      posterFormatId,
+      alreadyUpscaled,
+      availableModes: OFFERED_MODES,
+    });
+  }, [sourceWidth, sourceHeight, posterFormatId, alreadyUpscaled]);
+
+  const initialMode: UpscaleMode = (() => {
+    const routed = routing?.recommendedMode;
+    if (routed && OFFERED_MODES.includes(routed)) return routed;
+    if (
+      recommendedRecipe?.recommendedMode &&
+      OFFERED_MODES.includes(recommendedRecipe.recommendedMode)
+    ) {
+      return recommendedRecipe.recommendedMode;
+    }
+    return "realesrgan_4x";
+  })();
   const [picked, setPicked] = useState<UpscaleMode>(initialMode);
 
   const expectedOutput = useMemo(() => {
@@ -105,6 +137,18 @@ export default function EnhanceForPrintDialog({
     const h = Math.round(sourceHeight * cfg.scaleFactor);
     return { w, h, factor: cfg.scaleFactor };
   }, [picked, sourceWidth, sourceHeight]);
+
+  const selectedAssessment = useMemo(() => {
+    if (!posterFormatId) return null;
+    return assessSelectedMode(
+      { sourceWidth, sourceHeight, posterFormatId, alreadyUpscaled },
+      picked,
+    );
+  }, [picked, sourceWidth, sourceHeight, posterFormatId, alreadyUpscaled]);
+
+  const formatLabel = posterFormatId
+    ? getPrintFormat(posterFormatId)?.label
+    : null;
 
   const pickedCfg = UPSCALE_MODES[picked];
   const isHighCost = pickedCfg.estimatedCost === "high";
@@ -116,6 +160,7 @@ export default function EnhanceForPrintDialog({
       recommendedRecipe?.recommendedMode === picked ? recommendedRecipe : null,
     );
   };
+
 
   return (
     <AlertDialog open={open} onOpenChange={(o) => !disabled && setOpen(o)}>
@@ -141,7 +186,9 @@ export default function EnhanceForPrintDialog({
             const cfg = UPSCALE_MODES[m];
             const isPicked = picked === m;
             const cost = COST_PILL[cfg.estimatedCost];
-            const isRecommended = recommendedRecipe?.recommendedMode === m;
+            const isRoutingPick = routing?.recommendedMode === m;
+            const isRecommended =
+              isRoutingPick || (!routing && recommendedRecipe?.recommendedMode === m);
             return (
               <button
                 key={m}
@@ -204,7 +251,32 @@ export default function EnhanceForPrintDialog({
               SUPIR is the highest-cost method. Use it only for fine-art prints.
             </p>
           )}
+          {routing && routing.target && (
+            <p className="font-display text-[11px] text-muted-foreground pt-1 leading-snug">
+              {sourceWidth && sourceHeight
+                ? `Source: ${sourceWidth}×${sourceHeight} · `
+                : "Source: not measured · "}
+              Target{formatLabel ? ` (${formatLabel})` : ""}: {routing.target.width}×{routing.target.height}
+              {routing.requiredScale != null && ` · Required: ${routing.requiredScale}×`}
+              {routing.recommendedMode &&
+                ` · Recommended: ${UPSCALE_MODES[routing.recommendedMode].shortLabel}`}
+            </p>
+          )}
+          {routing?.warning && (
+            <p className="font-display text-[11px] text-orange-500 flex items-start gap-1 pt-1 leading-snug">
+              <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" />
+              {routing.warning}
+            </p>
+          )}
+          {selectedAssessment?.warning &&
+            selectedAssessment.warning !== routing?.warning && (
+              <p className="font-display text-[11px] text-orange-500 flex items-start gap-1 pt-1 leading-snug">
+                <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" />
+                {selectedAssessment.warning}
+              </p>
+            )}
         </div>
+
 
         <AlertDialogFooter>
           <AlertDialogCancel className="font-display">Cancel</AlertDialogCancel>
