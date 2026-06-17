@@ -69,6 +69,25 @@ export interface ProviderModelEntry {
   supportsNegativePrompt: boolean;
   /** True if completion is delivered via webhook (not the immediate response). */
   async: boolean;
+  /**
+   * OpenAI-only: the model accepts arbitrary width×height (e.g. gpt-image-2)
+   * instead of the three fixed sizes that gpt-image-1 / mini / 1.5 require.
+   * Defaults to false so today's gpt-image-1 path stays on the legal three.
+   */
+  supportsFlexibleDimensions?: boolean;
+  /**
+   * Gemini-only: the model accepts an explicit `imageSize` (e.g. 2K) in
+   * addition to the aspect-ratio token. Defaults to false so today's
+   * aspect-ratio-only call shape is preserved.
+   */
+  supportsImageSizeParameter?: boolean;
+  /**
+   * The model + our adapter can pin a seed for byte-for-byte (or
+   * near-deterministic) regeneration. Used by the Variant Fan-Out "Keep"
+   * action to decide whether re-running at print resolution is safe.
+   * Defaults to false everywhere until an adapter actually wires seeds.
+   */
+  supportsDeterministicSeedReplay?: boolean;
 
   // Routing hints ----------------------------------------------------------
   /** Strategies this model is particularly well-suited for. */

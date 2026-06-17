@@ -14,6 +14,7 @@ vi.mock("@/lib/generation-router", () => ({
 }));
 
 import { useVariantFanOut } from "./useVariantFanOut";
+import { PROVIDER_MODEL_REGISTRY } from "@/lib/generation-providers/registry";
 
 const req = {
   prompt: "p",
@@ -118,5 +119,83 @@ describe("useVariantFanOut", () => {
       await result.current.retryOne(0);
     });
     expect(result.current.tiles[0].status).toBe("idle");
+  });
+
+  describe("keepAtPrintResolution", () => {
+    it("returns the existing preview asset when no deterministic replay is available", async () => {
+      generateImage.mockImplementation((r: any) => {
+        // Echo the requested modelId so the hook can read it.
+        const baseIdx = generateImage.mock.calls.length - 1;
+        return Promise.resolve({
+          ...makeResponse(baseIdx),
+          response: {
+            ...makeResponse(baseIdx).response,
+            requestedModelId: r?.modelId,
+            resolvedModelId: r?.modelId,
+          },
+        });
+      });
+
+      const { result } = renderHook(() => useVariantFanOut(2));
+      await act(async () => {
+        await result.current.start({
+          ...req,
+          modelId: "openai:gpt-image-1",
+        } as never);
+      });
+
+      const initialCalls = generateImage.mock.calls.length;
+      let outcome: any;
+      await act(async () => {
+        outcome = await result.current.keepAtPrintResolution(0);
+      });
+
+      expect(outcome.regenerated).toBe(false);
+      expect(outcome.reason).toBe("no-replay-support");
+      // No extra generation call was made — we did NOT silently replace
+      // the user's chosen variant with a regenerated image.
+      expect(generateImage).toHaveBeenCalledTimes(initialCalls);
+      expect(outcome.response.imageUrl).toBe(result.current.tiles[0].response?.imageUrl);
+    });
+
+    it("re-runs at sizeIntent='print' when the model supports deterministic seed replay", async () => {
+      // Opt the model in just for this test.
+      const entry = PROVIDER_MODEL_REGISTRY.find((m) => m.id === "openai:gpt-image-1")!;
+      entry.supportsDeterministicSeedReplay = true;
+      try {
+        generateImage.mockImplementation((r: any) =>
+          Promise.resolve({
+            ...makeResponse(0),
+            response: {
+              ...makeResponse(0).response,
+              imageUrl: r?.sizeIntent === "print" ? "print.png" : "preview.png",
+              requestedModelId: r?.modelId,
+              resolvedModelId: r?.modelId,
+            },
+          }),
+        );
+
+        const { result } = renderHook(() => useVariantFanOut(1));
+        await act(async () => {
+          await result.current.start({
+            ...req,
+            modelId: "openai:gpt-image-1",
+          } as never);
+        });
+
+        let outcome: any;
+        await act(async () => {
+          outcome = await result.current.keepAtPrintResolution(0);
+        });
+
+        expect(outcome.regenerated).toBe(true);
+        expect(outcome.response.imageUrl).toBe("print.png");
+        // The replay call passed sizeIntent: "print".
+        const lastCall = generateImage.mock.calls.at(-1)?.[0];
+        expect(lastCall?.sizeIntent).toBe("print");
+      } finally {
+        entry.supportsDeterministicSeedReplay = false;
+      }
+    });
   });
 });

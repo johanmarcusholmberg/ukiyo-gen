@@ -8,6 +8,7 @@
  */
 import { useCallback, useRef, useState } from "react";
 import { generateImage } from "@/lib/generation-router";
+import { supportsDeterministicSeedReplay } from "@/lib/provider-print-sizing";
 import type {
   NormalizedGenerationRequest,
   NormalizedGenerationResponse,
@@ -22,6 +23,19 @@ export interface VariantTile {
   error?: string;
 }
 
+/** Outcome of a `keepAtPrintResolution` attempt. */
+export interface KeepAtPrintResolutionResult {
+  /** The asset the caller should save. Always present on success. */
+  response: NormalizedGenerationResponse;
+  /** True when a second generation actually ran (deterministic replay path). */
+  regenerated: boolean;
+  /**
+   * When `regenerated` is false, the reason — surfaced so callers can
+   * decide whether to show a "kept preview-sized asset" hint.
+   */
+  reason?: "no-replay-support" | "no-modelid" | "tile-not-done";
+}
+
 export interface UseVariantFanOutResult {
   tiles: VariantTile[];
   isRunning: boolean;
@@ -29,6 +43,14 @@ export interface UseVariantFanOutResult {
   retryOne: (id: number) => Promise<void>;
   discard: (id: number) => void;
   discardAll: () => void;
+  /**
+   * Keep variant `id`; if (and only if) the resolved model supports
+   * deterministic seed replay, re-run that variant at `sizeIntent: "print"`
+   * and return the higher-res asset. Otherwise return the existing
+   * preview-sized asset unchanged so we never swap the user's chosen
+   * image for a different-looking regeneration.
+   */
+  keepAtPrintResolution: (id: number) => Promise<KeepAtPrintResolutionResult | null>;
 }
 
 export function useVariantFanOut(count = 4): UseVariantFanOutResult {
@@ -100,5 +122,51 @@ export function useVariantFanOut(count = 4): UseVariantFanOutResult {
     setTiles(makeIdle());
   }, [makeIdle]);
 
-  return { tiles, isRunning, start, retryOne, discard, discardAll };
+  const keepAtPrintResolution = useCallback(
+    async (id: number): Promise<KeepAtPrintResolutionResult | null> => {
+      const tile = tiles.find((t) => t.id === id);
+      if (!tile || tile.status !== "done" || !tile.response) {
+        return null;
+      }
+      const baseReq = reqRef.current;
+      const modelId =
+        tile.response.resolvedModelId ??
+        tile.response.requestedModelId ??
+        baseReq?.modelId;
+
+      if (!baseReq) {
+        return { response: tile.response, regenerated: false, reason: "tile-not-done" };
+      }
+      if (!modelId) {
+        return { response: tile.response, regenerated: false, reason: "no-modelid" };
+      }
+      if (!supportsDeterministicSeedReplay(modelId)) {
+        return {
+          response: tile.response,
+          regenerated: false,
+          reason: "no-replay-support",
+        };
+      }
+
+      // Deterministic replay path: re-run at print intent so the asset
+      // we save is higher-res but visually identical.
+      const replayReq: NormalizedGenerationRequest = {
+        ...baseReq,
+        sizeIntent: "print",
+      };
+      const { response } = await generateImage(replayReq);
+      return { response, regenerated: true };
+    },
+    [tiles],
+  );
+
+  return {
+    tiles,
+    isRunning,
+    start,
+    retryOne,
+    discard,
+    discardAll,
+    keepAtPrintResolution,
+  };
 }
