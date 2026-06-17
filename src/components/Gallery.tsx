@@ -481,11 +481,25 @@ function LightboxContent({
             hasEnhanced={!!img.enhanced}
             sourceWidth={img.actual_width_px ?? null}
             sourceHeight={img.actual_height_px ?? null}
+            originalSource={{
+              url: getBaseAssetUrl(img),
+              width: img.actual_width_px ?? null,
+              height: img.actual_height_px ?? null,
+            }}
+            enhancedSource={
+              img.enhanced || img.enhancedUrl
+                ? {
+                    url: getEnhancedAssetUrl(img),
+                    width: img.enhanced_width_px ?? null,
+                    height: img.enhanced_height_px ?? null,
+                  }
+                : null
+            }
             posterFormatId={img.print_format_id ?? null}
             alreadyUpscaled={!!img.upscale_applied}
             recommendedRecipe={recommendedRecipe}
             disabled={upscaling}
-            onConfirm={(m, recipe) => onUpscale(img, m, recipe ?? null)}
+            onConfirm={(m, recipe, source) => onUpscale(img, m, recipe ?? null, source)}
             trigger={
               <Button
                 variant="outline"
