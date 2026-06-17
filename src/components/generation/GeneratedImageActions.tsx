@@ -57,6 +57,9 @@ export interface GeneratedImageActionsProps {
   // Upscale state
   isUpscaling: boolean;
   canManualUpscale: boolean;
+  /** Actual probed dimensions of the current live master asset, if known. */
+  sourceWidth?: number | null;
+  sourceHeight?: number | null;
   recommendedRecipe: UpscaleRecipe | null;
   onEnhanceConfirm: (mode: UpscaleMode, recipe: UpscaleRecipe | null) => void;
 
