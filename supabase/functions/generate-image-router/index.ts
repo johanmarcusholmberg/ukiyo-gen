@@ -31,7 +31,11 @@ interface Body {
   posterFormatHint?: string;
   /** Poster format id from `src/lib/print-formats.ts`, used for provider sizing. */
   posterFormatId?: string;
+  /** Explicit pixel dimensions (SDXL adapter overrides). */
+  requestedWidth?: number;
+  requestedHeight?: number;
 }
+
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
