@@ -85,14 +85,21 @@ export function useVariantFanOut(count = 4): UseVariantFanOutResult {
 
   const start = useCallback(
     async (req: NormalizedGenerationRequest) => {
-      reqRef.current = req;
+      // Variant Fan-Out is an explore step — always cheap/preview-sized,
+      // regardless of the caller's intent. The Keep action escalates the
+      // chosen variant to print resolution (when seed replay is supported).
+      const previewReq: NormalizedGenerationRequest = {
+        ...req,
+        sizeIntent: "preview",
+      };
+      reqRef.current = previewReq;
       setIsRunning(true);
       setTiles(
         Array.from({ length: count }, (_, i) => ({ id: i, status: "loading" as const })),
       );
       try {
         await Promise.allSettled(
-          Array.from({ length: count }, (_, i) => runOne(i, req)),
+          Array.from({ length: count }, (_, i) => runOne(i, previewReq)),
         );
       } finally {
         setIsRunning(false);
@@ -100,6 +107,7 @@ export function useVariantFanOut(count = 4): UseVariantFanOutResult {
     },
     [count, runOne],
   );
+
 
   const retryOne = useCallback(
     async (id: number) => {

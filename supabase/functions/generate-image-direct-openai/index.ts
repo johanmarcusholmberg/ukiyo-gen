@@ -32,7 +32,11 @@ interface Body {
   strictness?: "balanced" | "strict" | "very_strict";
   posterFormatHint?: string;
   posterFormatId?: string;
+  sizeIntent?: "preview" | "standard" | "print";
+  /** Explicit "WxH" override (flexible-dim models only). */
+  requestedSize?: string;
 }
+
 
 const OPENAI_MODEL = "gpt-image-1";
 
@@ -53,7 +57,10 @@ serve(async (req) => {
       strictness,
       posterFormatHint,
       posterFormatId,
+      sizeIntent,
+      requestedSize,
     } = body || {};
+
 
     if (!prompt || typeof prompt !== "string") {
       return new Response(
@@ -100,14 +107,25 @@ serve(async (req) => {
     const compiledPrompt = compiled.prompt;
 
     const sized = openaiSizeForFormat(posterFormatId, aspectRatio);
-    const { size, width, height } = sized;
+    let size: string = sized.size;
+    let width = sized.width;
+    let height = sized.height;
+    let sizeSource: string = sized.source;
+    // Honor adapter-provided "WxH" override (capability-gated client-side).
+    if (typeof requestedSize === "string" && /^\d{3,4}x\d{3,4}$/.test(requestedSize)) {
+      const [w, h] = requestedSize.split("x").map(Number);
+      if (w >= 256 && w <= 2048 && h >= 256 && h <= 2048 && w % 8 === 0 && h % 8 === 0) {
+        size = requestedSize; width = w; height = h; sizeSource = "override";
+      }
+    }
     const startedAt = Date.now();
 
     console.log(
       `[direct-openai] style=${styleKey} category=${compiled.category} ` +
-        `prompt_len=${compiledPrompt.length} size=${size} sizeSource=${sized.source} ` +
-        `exact=${sized.exact} posterFormatId=${posterFormatId ?? "none"} quality=${quality ?? "high"}`,
+        `prompt_len=${compiledPrompt.length} size=${size} sizeSource=${sizeSource} ` +
+        `sizeIntent=${sizeIntent ?? "standard"} exact=${sized.exact} posterFormatId=${posterFormatId ?? "none"} quality=${quality ?? "high"}`,
     );
+
 
     const res = await fetch("https://api.openai.com/v1/images/generations", {
       method: "POST",

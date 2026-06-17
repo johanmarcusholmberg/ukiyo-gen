@@ -27,6 +27,10 @@ interface Body {
   printMode?: boolean;
   posterFormatHint?: string;
   posterFormatId?: string;
+  sizeIntent?: "preview" | "standard" | "print";
+  /** Explicit pixel dims from the adapter (must be multiples of 8). */
+  requestedWidth?: number;
+  requestedHeight?: number;
 }
 
 const REPLICATE_SDXL_VERSION =
@@ -39,7 +43,12 @@ serve(async (req) => {
 
   try {
     const body = (await req.json()) as Body;
-    const { prompt, styleKey, aspectRatio, backgroundStyle, printMode, posterFormatHint, posterFormatId } = body || {};
+    const {
+      prompt, styleKey, aspectRatio, backgroundStyle, printMode,
+      posterFormatHint, posterFormatId, sizeIntent,
+      requestedWidth: reqW, requestedHeight: reqH,
+    } = body || {};
+
 
     if (!prompt || typeof prompt !== "string") {
       return new Response(
@@ -79,15 +88,27 @@ serve(async (req) => {
         typeof posterFormatHint === "string" ? posterFormatHint : undefined,
     });
 
-    const sized = sdxlSizeForFormat(posterFormatId, aspectRatio);
-    const { width, height } = sized;
+    const validIntent: "preview" | "standard" | "print" =
+      sizeIntent === "preview" || sizeIntent === "print" ? sizeIntent : "standard";
+    const sized = sdxlSizeForFormat(posterFormatId, aspectRatio, validIntent);
+    let width = sized.width;
+    let height = sized.height;
+    let sizeSource: string = sized.source;
+    if (
+      typeof reqW === "number" && typeof reqH === "number" &&
+      reqW >= 256 && reqW <= 2048 && reqH >= 256 && reqH <= 2048 &&
+      reqW % 8 === 0 && reqH % 8 === 0
+    ) {
+      width = reqW; height = reqH; sizeSource = "override";
+    }
     const startedAt = Date.now();
 
     console.log(
       `[direct-replicate] style=${styleKey} category=${compiled.category} ` +
         `prompt_len=${compiled.prompt.length} size=${width}x${height} ` +
-        `sizeSource=${sized.source} exact=${sized.exact} posterFormatId=${posterFormatId ?? "none"}`,
+        `sizeSource=${sizeSource} sizeIntent=${validIntent} exact=${sized.exact} posterFormatId=${posterFormatId ?? "none"}`,
     );
+
 
     const createRes = await fetch("https://api.replicate.com/v1/predictions", {
       method: "POST",

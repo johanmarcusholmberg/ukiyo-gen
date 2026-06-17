@@ -58,7 +58,24 @@ describe("useVariantFanOut", () => {
     expect(generateImage).toHaveBeenCalledTimes(4);
     expect(result.current.tiles.every((t) => t.status === "done")).toBe(true);
     expect(result.current.isRunning).toBe(false);
+    // Every fan-out call must run at preview intent — never print —
+    // even when the caller passes `sizeIntent: "print"`.
+    for (const call of generateImage.mock.calls) {
+      expect(call[0].sizeIntent).toBe("preview");
+    }
   });
+
+  it("forces sizeIntent='preview' even when the caller asks for print", async () => {
+    generateImage.mockResolvedValue(makeResponse(0));
+    const { result } = renderHook(() => useVariantFanOut(2));
+    await act(async () => {
+      await result.current.start({ ...req, sizeIntent: "print" } as never);
+    });
+    for (const call of generateImage.mock.calls) {
+      expect(call[0].sizeIntent).toBe("preview");
+    }
+  });
+
 
   it("isolates failures to the failing tile", async () => {
     let calls = 0;

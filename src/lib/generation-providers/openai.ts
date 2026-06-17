@@ -15,6 +15,7 @@
  */
 
 import { supabase } from "@/integrations/supabase/client";
+import { resolveAdapterSizingOverrides } from "@/lib/provider-print-sizing";
 import type {
   NormalizedGenerationRequest,
   NormalizedGenerationResponse,
@@ -29,13 +30,25 @@ export async function generateWithOpenAIAdapter(
     );
   }
 
+  const overrides = resolveAdapterSizingOverrides({
+    provider: "openai",
+    modelId: req.modelId,
+    formatId: req.posterFormatId,
+    intent: req.sizeIntent,
+  });
+
   const body: Record<string, unknown> = {
     prompt: req.prompt,
     styleKey: req.styleKey,
     aspectRatio: req.aspectRatio,
     backgroundStyle: req.backgroundStyle,
     printMode: req.printMode ?? true,
+    sizeIntent: overrides?.sizeIntent ?? req.sizeIntent ?? "standard",
   };
+  // Only forward an explicit size for flexible-dim models — the edge fn
+  // will reject non-legal sizes on gpt-image-1.
+  if (overrides?.requestedSize) body.requestedSize = overrides.requestedSize;
+
   if (req.strictness) body.strictness = req.strictness;
   if (req.posterFormatHint) body.posterFormatHint = req.posterFormatHint;
   if (req.posterFormatId) body.posterFormatId = req.posterFormatId;

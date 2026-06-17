@@ -31,7 +31,11 @@ interface Body {
   posterFormatHint?: string;
   /** Poster format id from `src/lib/print-formats.ts`, used for provider sizing. */
   posterFormatId?: string;
+  /** Explicit pixel dimensions (SDXL adapter overrides). */
+  requestedWidth?: number;
+  requestedHeight?: number;
 }
+
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -51,7 +55,16 @@ serve(async (req) => {
       strictness,
       posterFormatHint,
       posterFormatId,
+      sizeIntent,
+      requestedWidth,
+      requestedHeight,
     } = body || {};
+
+    const validSizeIntent =
+      sizeIntent === "preview" || sizeIntent === "standard" || sizeIntent === "print"
+        ? sizeIntent
+        : undefined;
+
 
     if (!prompt || typeof prompt !== "string") {
       return new Response(
@@ -111,7 +124,11 @@ serve(async (req) => {
           typeof posterFormatHint === "string" ? posterFormatHint : undefined,
         posterFormatId:
           typeof posterFormatId === "string" ? posterFormatId : undefined,
+        sizeIntent: validSizeIntent,
+        requestedWidth: typeof requestedWidth === "number" ? requestedWidth : undefined,
+        requestedHeight: typeof requestedHeight === "number" ? requestedHeight : undefined,
       });
+
 
       console.log(
         `[generate-image-router] style=${styleKey} provider=${outcome.providerId} ` +

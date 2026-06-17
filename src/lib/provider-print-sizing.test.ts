@@ -20,9 +20,11 @@ function overrideModel(id: string, patch: Record<string, unknown>) {
 
 import {
   resolvePrintSize,
+  resolveAdapterSizingOverrides,
   supportsDeterministicSeedReplay,
 } from "./provider-print-sizing";
 import { PRINT_FORMATS } from "./print-formats";
+
 
 describe("resolvePrintSize — preview/standard intent (legacy)", () => {
   it("returns today's small SDXL map for preview", () => {
@@ -165,5 +167,86 @@ describe("supportsDeterministicSeedReplay", () => {
   it("returns false for unknown modelId", () => {
     expect(supportsDeterministicSeedReplay(undefined)).toBe(false);
     expect(supportsDeterministicSeedReplay("does-not-exist")).toBe(false);
+  });
+});
+
+describe("resolveAdapterSizingOverrides — sizeIntent wire format", () => {
+  it("preview intent emits no size overrides for any provider", () => {
+    for (const provider of ["sdxl", "openai", "gemini"] as const) {
+      const o = resolveAdapterSizingOverrides({
+        provider,
+        formatId: "print_50x70",
+        intent: "preview",
+      });
+      expect(o?.sizeIntent).toBe("preview");
+      expect((o as any)?.requestedWidth).toBeUndefined();
+      expect((o as any)?.requestedSize).toBeUndefined();
+      expect((o as any)?.imageSize).toBeUndefined();
+    }
+  });
+
+  it("print intent emits SDXL width/height overrides preserving the ratio", () => {
+    const o = resolveAdapterSizingOverrides({
+      provider: "sdxl",
+      formatId: "print_50x70",
+      intent: "print",
+    }) as any;
+    expect(o.sizeIntent).toBe("print");
+    expect(o.requestedWidth).toBeGreaterThanOrEqual(1408);
+    expect(o.requestedHeight).toBeGreaterThanOrEqual(1408);
+    expect(o.requestedWidth % 8).toBe(0);
+    expect(o.requestedHeight % 8).toBe(0);
+    expect(o.aspectRatioPreserved).toBe(true);
+  });
+
+  it("print intent + fixed-size OpenAI model emits NO requestedSize", () => {
+    const o = resolveAdapterSizingOverrides({
+      provider: "openai",
+      modelId: "openai:gpt-image-1",
+      formatId: "print_50x70",
+      intent: "print",
+    }) as any;
+    expect(o.sizeIntent).toBe("print");
+    expect(o.requestedSize).toBeUndefined();
+  });
+
+  it("print intent + flexible OpenAI model emits requestedSize", () => {
+    overrideModel("openai:gpt-image-1", { supportsFlexibleDimensions: true });
+    try {
+      const o = resolveAdapterSizingOverrides({
+        provider: "openai",
+        modelId: "openai:gpt-image-1",
+        formatId: "print_50x70",
+        intent: "print",
+      }) as any;
+      expect(o.requestedSize).toMatch(/^\d+x\d+$/);
+      expect(["1024x1024", "1024x1536", "1536x1024"]).not.toContain(o.requestedSize);
+    } finally {
+      overrideModel("openai:gpt-image-1", { supportsFlexibleDimensions: false });
+    }
+  });
+
+  it("print intent + Gemini emits aspect ratio, no imageSize unless model opts in", () => {
+    const o = resolveAdapterSizingOverrides({
+      provider: "gemini",
+      modelId: "gemini:nano-banana-pro",
+      formatId: "print_30x40",
+      intent: "print",
+    }) as any;
+    expect(o.requestedAspectRatio).toBe("3:4");
+    expect(o.imageSize).toBeUndefined();
+
+    overrideModel("gemini:nano-banana-pro", { supportsImageSizeParameter: true });
+    try {
+      const o2 = resolveAdapterSizingOverrides({
+        provider: "gemini",
+        modelId: "gemini:nano-banana-pro",
+        formatId: "print_30x40",
+        intent: "print",
+      }) as any;
+      expect(o2.imageSize).toBeDefined();
+    } finally {
+      overrideModel("gemini:nano-banana-pro", { supportsImageSizeParameter: false });
+    }
   });
 });
