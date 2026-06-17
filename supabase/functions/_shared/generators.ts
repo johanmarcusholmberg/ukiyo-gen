@@ -58,7 +58,16 @@ export interface GenerateArgs {
    * instead of the legacy aspect-ratio token map.
    */
   posterFormatId?: string;
+  /**
+   * Coarse size intent. "print" routes SDXL to the ratio-preserving
+   * long-edge 1984 helper; "preview"/"standard" keep today's small map.
+   */
+  sizeIntent?: "preview" | "standard" | "print";
+  /** Optional explicit width/height (SDXL) — overrides format-derived sizing. */
+  requestedWidth?: number;
+  requestedHeight?: number;
 }
+
 
 // ── Gemini provider (existing path) ─────────────────────────────────────
 
