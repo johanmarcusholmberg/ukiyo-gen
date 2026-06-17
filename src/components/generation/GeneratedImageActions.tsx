@@ -57,6 +57,9 @@ export interface GeneratedImageActionsProps {
   // Upscale state
   isUpscaling: boolean;
   canManualUpscale: boolean;
+  /** Actual probed dimensions of the current live master asset, if known. */
+  sourceWidth?: number | null;
+  sourceHeight?: number | null;
   recommendedRecipe: UpscaleRecipe | null;
   onEnhanceConfirm: (mode: UpscaleMode, recipe: UpscaleRecipe | null) => void;
 
@@ -115,6 +118,8 @@ export default function GeneratedImageActions(props: GeneratedImageActionsProps)
     styleConfig,
     isUpscaling,
     canManualUpscale,
+    sourceWidth,
+    sourceHeight,
     recommendedRecipe,
     onEnhanceConfirm,
     savedToGallery,
@@ -199,6 +204,8 @@ export default function GeneratedImageActions(props: GeneratedImageActionsProps)
       {canManualUpscale && (
         <EnhanceForPrintDialog
           hasEnhanced={!!hasEnhanced}
+          sourceWidth={sourceWidth ?? null}
+          sourceHeight={sourceHeight ?? null}
           posterFormatId={selectedPrintFormat.id}
           alreadyUpscaled={!!hasEnhanced}
           recommendedRecipe={recommendedRecipe}

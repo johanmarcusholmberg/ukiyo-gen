@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo } from "react";
+import { useState, useRef, useMemo, useEffect } from "react";
 import { usePersistedGeneration } from "@/hooks/use-persisted-generation";
 import { Loader2, Download, Sparkles, Save, Replace, X, Trash2, Pencil, Printer, FileImage, ArrowUpCircle, ThumbsUp, ThumbsDown, Layers, AlertTriangle, LayoutPanelTop, Info } from "lucide-react";
 import {
@@ -181,6 +181,15 @@ export default function ImageGenerator({
   const [lastResolvedModelId, setLastResolvedModelId] = useState<string | null>(null);
   const [lastSelectedAdapterId, setLastSelectedAdapterId] = useState<string | null>(null);
   const [lastModelFallbackReason, setLastModelFallbackReason] = useState<string | null>(null);
+  // Live probed master dimensions for the currently displayed asset.
+  // Used to feed actual-dimension-aware upscale routing into EnhanceForPrintDialog.
+  // Reset whenever the master URL changes; a probe failure leaves it null
+  // so the dialog falls back to its safe unknown-dimensions behavior.
+  const [liveMasterDims, setLiveMasterDims] = useState<{
+    width: number;
+    height: number;
+    url: string;
+  } | null>(null);
   const [compareOpen, setCompareOpen] = useState(false);
   // Variant fan-out — generate 4 in parallel and let the user pick.
   const [variantMode, setVariantMode] = useState(false);
@@ -256,6 +265,33 @@ export default function ImageGenerator({
       }),
     [variantStyleKey, mode, lastProviderUsed, generationMode],
   );
+
+  // Live master-asset dimension probe.
+  // Re-runs only when the resolved master URL changes. Skips when the URL
+  // is already the one we measured. Silent failure preserves the safe
+  // unknown-dimensions fallback inside EnhanceForPrintDialog.
+  const liveMasterUrl = enhancedImageUrl || baseImageUrl || imageUrl || null;
+  useEffect(() => {
+    if (!liveMasterUrl) {
+      setLiveMasterDims(null);
+      return;
+    }
+    if (liveMasterDims?.url === liveMasterUrl) return;
+    let cancelled = false;
+    loadImageDimensions(liveMasterUrl)
+      .then((dims) => {
+        if (cancelled || !dims) return;
+        setLiveMasterDims({ width: dims.width, height: dims.height, url: liveMasterUrl });
+      })
+      .catch((e) => {
+        if (cancelled) return;
+        console.warn("[ImageGenerator] live master dimension probe failed:", e);
+        setLiveMasterDims(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [liveMasterUrl, liveMasterDims?.url]);
 
   /**
    * Trigger upscale (shared for auto + manual + re-upscale).
@@ -1541,6 +1577,8 @@ export default function ImageGenerator({
               styleConfig={styleConfig}
               isUpscaling={isUpscaling}
               canManualUpscale={canManualUpscale}
+              sourceWidth={liveMasterDims?.width ?? null}
+              sourceHeight={liveMasterDims?.height ?? null}
               recommendedRecipe={recommendedRecipe}
               onEnhanceConfirm={handleEnhanceConfirm}
               savedToGallery={savedToGallery}
