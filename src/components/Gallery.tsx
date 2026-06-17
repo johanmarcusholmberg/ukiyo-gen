@@ -214,7 +214,12 @@ interface LightboxContentProps {
   printExporting: boolean;
   onEtsyExport: (img: GalleryImage) => void;
   onEtsyMockup: (img: GalleryImage) => void;
-  onUpscale: (img: GalleryImage, mode: UpscaleMode, recipe?: UpscaleRecipe | null) => void;
+  onUpscale: (
+    img: GalleryImage,
+    mode: UpscaleMode,
+    recipe?: UpscaleRecipe | null,
+    source?: import("@/components/EnhanceForPrintDialog").EnhanceForPrintDialogSourceDecision,
+  ) => void;
   upscaling: boolean;
   upscalingStageLabel: string;
   upscalingProgress: number;
