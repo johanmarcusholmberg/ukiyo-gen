@@ -27,6 +27,10 @@ interface Body {
   printMode?: boolean;
   posterFormatHint?: string;
   posterFormatId?: string;
+  sizeIntent?: "preview" | "standard" | "print";
+  /** Explicit pixel dims from the adapter (must be multiples of 8). */
+  requestedWidth?: number;
+  requestedHeight?: number;
 }
 
 const REPLICATE_SDXL_VERSION =
@@ -39,7 +43,12 @@ serve(async (req) => {
 
   try {
     const body = (await req.json()) as Body;
-    const { prompt, styleKey, aspectRatio, backgroundStyle, printMode, posterFormatHint, posterFormatId } = body || {};
+    const {
+      prompt, styleKey, aspectRatio, backgroundStyle, printMode,
+      posterFormatHint, posterFormatId, sizeIntent,
+      requestedWidth: reqW, requestedHeight: reqH,
+    } = body || {};
+
 
     if (!prompt || typeof prompt !== "string") {
       return new Response(
