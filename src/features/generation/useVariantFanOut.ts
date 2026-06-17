@@ -8,6 +8,7 @@
  */
 import { useCallback, useRef, useState } from "react";
 import { generateImage } from "@/lib/generation-router";
+import { supportsDeterministicSeedReplay } from "@/lib/provider-print-sizing";
 import type {
   NormalizedGenerationRequest,
   NormalizedGenerationResponse,
@@ -22,6 +23,19 @@ export interface VariantTile {
   error?: string;
 }
 
+/** Outcome of a `keepAtPrintResolution` attempt. */
+export interface KeepAtPrintResolutionResult {
+  /** The asset the caller should save. Always present on success. */
+  response: NormalizedGenerationResponse;
+  /** True when a second generation actually ran (deterministic replay path). */
+  regenerated: boolean;
+  /**
+   * When `regenerated` is false, the reason — surfaced so callers can
+   * decide whether to show a "kept preview-sized asset" hint.
+   */
+  reason?: "no-replay-support" | "no-modelid" | "tile-not-done";
+}
+
 export interface UseVariantFanOutResult {
   tiles: VariantTile[];
   isRunning: boolean;
@@ -29,6 +43,14 @@ export interface UseVariantFanOutResult {
   retryOne: (id: number) => Promise<void>;
   discard: (id: number) => void;
   discardAll: () => void;
+  /**
+   * Keep variant `id`; if (and only if) the resolved model supports
+   * deterministic seed replay, re-run that variant at `sizeIntent: "print"`
+   * and return the higher-res asset. Otherwise return the existing
+   * preview-sized asset unchanged so we never swap the user's chosen
+   * image for a different-looking regeneration.
+   */
+  keepAtPrintResolution: (id: number) => Promise<KeepAtPrintResolutionResult | null>;
 }
 
 export function useVariantFanOut(count = 4): UseVariantFanOutResult {
