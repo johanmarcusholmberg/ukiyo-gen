@@ -122,5 +122,51 @@ export function useVariantFanOut(count = 4): UseVariantFanOutResult {
     setTiles(makeIdle());
   }, [makeIdle]);
 
-  return { tiles, isRunning, start, retryOne, discard, discardAll };
+  const keepAtPrintResolution = useCallback(
+    async (id: number): Promise<KeepAtPrintResolutionResult | null> => {
+      const tile = tiles.find((t) => t.id === id);
+      if (!tile || tile.status !== "done" || !tile.response) {
+        return null;
+      }
+      const baseReq = reqRef.current;
+      const modelId =
+        tile.response.resolvedModelId ??
+        tile.response.requestedModelId ??
+        baseReq?.modelId;
+
+      if (!baseReq) {
+        return { response: tile.response, regenerated: false, reason: "tile-not-done" };
+      }
+      if (!modelId) {
+        return { response: tile.response, regenerated: false, reason: "no-modelid" };
+      }
+      if (!supportsDeterministicSeedReplay(modelId)) {
+        return {
+          response: tile.response,
+          regenerated: false,
+          reason: "no-replay-support",
+        };
+      }
+
+      // Deterministic replay path: re-run at print intent so the asset
+      // we save is higher-res but visually identical.
+      const replayReq: NormalizedGenerationRequest = {
+        ...baseReq,
+        sizeIntent: "print",
+      };
+      const { response } = await generateImage(replayReq);
+      return { response, regenerated: true };
+    },
+    [tiles],
+  );
+
+  return {
+    tiles,
+    isRunning,
+    start,
+    retryOne,
+    discard,
+    discardAll,
+    keepAtPrintResolution,
+  };
 }
