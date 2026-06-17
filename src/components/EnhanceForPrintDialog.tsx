@@ -188,7 +188,9 @@ export default function EnhanceForPrintDialog({
             const cfg = UPSCALE_MODES[m];
             const isPicked = picked === m;
             const cost = COST_PILL[cfg.estimatedCost];
-            const isRecommended = recommendedRecipe?.recommendedMode === m;
+            const isRoutingPick = routing?.recommendedMode === m;
+            const isRecommended =
+              isRoutingPick || (!routing && recommendedRecipe?.recommendedMode === m);
             return (
               <button
                 key={m}
