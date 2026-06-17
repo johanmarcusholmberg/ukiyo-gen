@@ -104,10 +104,10 @@ function resolveSdxlPrintSize(formatId: string): ResolvedSdxlSize | null {
   let width: number, height: number;
   if (ratio >= 1) {
     width = SDXL_PRINT_LONG_EDGE;
-    height = snap(SDXL_PRINT_LONG_EDGE / ratio, SDXL_MULTIPLE);
+    height = snapForRatio(SDXL_PRINT_LONG_EDGE / ratio, width, ratio, SDXL_MULTIPLE, "height");
   } else {
     height = SDXL_PRINT_LONG_EDGE;
-    width = snap(SDXL_PRINT_LONG_EDGE * ratio, SDXL_MULTIPLE);
+    width = snapForRatio(SDXL_PRINT_LONG_EDGE * ratio, height, ratio, SDXL_MULTIPLE, "width");
   }
   const preserved = isAspectRatioMatch(width, height, ratio, ASPECT_TOLERANCE);
   return {
