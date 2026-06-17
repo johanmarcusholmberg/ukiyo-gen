@@ -124,7 +124,11 @@ serve(async (req) => {
           typeof posterFormatHint === "string" ? posterFormatHint : undefined,
         posterFormatId:
           typeof posterFormatId === "string" ? posterFormatId : undefined,
+        sizeIntent: validSizeIntent,
+        requestedWidth: typeof requestedWidth === "number" ? requestedWidth : undefined,
+        requestedHeight: typeof requestedHeight === "number" ? requestedHeight : undefined,
       });
+
 
       console.log(
         `[generate-image-router] style=${styleKey} provider=${outcome.providerId} ` +
