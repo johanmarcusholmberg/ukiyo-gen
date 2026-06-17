@@ -38,6 +38,12 @@ import {
   type UpscaleCostTier,
 } from "@/lib/upscale-modes";
 import type { UpscaleRecipe } from "@/lib/upscale-recipes";
+import {
+  recommendPrintUpscaleRoute,
+  assessSelectedMode,
+  type PrintUpscaleRoutingResult,
+} from "@/lib/print-upscale-routing";
+import { getPrintFormat } from "@/lib/print-formats";
 
 const COST_PILL: Record<UpscaleCostTier, { label: string; className: string }> = {
   free: {
