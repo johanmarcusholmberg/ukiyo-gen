@@ -235,6 +235,14 @@ function LightboxContent({
   const currentModeLabel = img.upscale_mode
     ? UPSCALE_MODES[img.upscale_mode as UpscaleMode]?.shortLabel ?? img.upscale_mode
     : null;
+  const [exportFormat, setExportFormat] = useState<ExportFormat>(() =>
+    getStoredExportFormat(),
+  );
+  const handleExportFormatChange = (v: string) => {
+    const next = v as ExportFormat;
+    setExportFormat(next);
+    setStoredExportFormat(next);
+  };
   return (
     <div className="space-y-4">
       <ImagePreviewMockups imageUrl={img.masterUrl} alt={img.prompt} />
