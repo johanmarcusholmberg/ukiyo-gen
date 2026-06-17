@@ -32,7 +32,11 @@ interface Body {
   strictness?: "balanced" | "strict" | "very_strict";
   posterFormatHint?: string;
   posterFormatId?: string;
+  sizeIntent?: "preview" | "standard" | "print";
+  /** Explicit "WxH" override (flexible-dim models only). */
+  requestedSize?: string;
 }
+
 
 const OPENAI_MODEL = "gpt-image-1";
 
