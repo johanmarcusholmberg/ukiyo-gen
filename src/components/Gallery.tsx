@@ -442,6 +442,8 @@ function LightboxContent({
             hasEnhanced={!!img.enhanced}
             sourceWidth={img.actual_width_px ?? null}
             sourceHeight={img.actual_height_px ?? null}
+            posterFormatId={img.print_format_id ?? null}
+            alreadyUpscaled={!!img.upscale_applied}
             recommendedRecipe={recommendedRecipe}
             disabled={upscaling}
             onConfirm={(m, recipe) => onUpscale(img, m, recipe ?? null)}
