@@ -148,8 +148,7 @@ describe("resolvePrintSize — Gemini only sends imageSize when supported", () =
 
 describe("supportsDeterministicSeedReplay", () => {
   it("returns false for every model today", () => {
-    const mod = require("@/lib/generation-providers/registry");
-    for (const m of mod.PROVIDER_MODEL_REGISTRY) {
+    for (const m of PROVIDER_MODEL_REGISTRY) {
       expect(supportsDeterministicSeedReplay(m.id)).toBe(false);
     }
   });
