@@ -308,6 +308,79 @@ export function resolvePrintSize(input: {
   return resolveGeminiPrintSize(formatId, modelId);
 }
 
+// ── Adapter overrides — wire-format hints sent to edge functions ────────
+
+/**
+ * Compute the wire-format size overrides an adapter should attach to its
+ * edge-function body for a given (provider, modelId, formatId, intent).
+ *
+ * Returns `null` when no override should be sent (preview/standard intent,
+ * missing formatId, etc.) — the edge function then falls back to its
+ * existing legacy sizing logic, preserving current behavior exactly.
+ */
+export interface AdapterSizingOverrides {
+  sizeIntent: SizeIntent;
+  /** SDXL/Replicate: explicit width × height in px (multiples of 8). */
+  requestedWidth?: number;
+  requestedHeight?: number;
+  /** OpenAI: explicit "WxH" size string (flexible-dim models only). */
+  requestedSize?: string;
+  /** Gemini: explicit aspect-ratio token to send. */
+  requestedAspectRatio?: string;
+  /** Gemini: explicit imageSize {w,h} — only when model opts in. */
+  imageSize?: { width: number; height: number };
+  /** True when the override preserves the poster format ratio. */
+  aspectRatioPreserved?: boolean;
+}
+
+export function resolveAdapterSizingOverrides(input: {
+  provider: "sdxl" | "openai" | "gemini";
+  modelId?: string;
+  formatId?: string;
+  intent?: SizeIntent;
+}): AdapterSizingOverrides | null {
+  const intent: SizeIntent = input.intent ?? "standard";
+  // Preview/standard preserves today's edge-side defaults — emit nothing
+  // beyond the intent itself.
+  if (intent !== "print") return { sizeIntent: intent };
+  const resolved = resolvePrintSize({
+    provider: input.provider,
+    modelId: input.modelId,
+    formatId: input.formatId,
+    intent,
+  });
+  if (!resolved) return { sizeIntent: intent };
+
+  if (resolved.provider === "sdxl") {
+    return {
+      sizeIntent: intent,
+      requestedWidth: resolved.width,
+      requestedHeight: resolved.height,
+      aspectRatioPreserved: resolved.aspectRatioPreserved,
+    };
+  }
+  if (resolved.provider === "openai") {
+    // Only forward an explicit size when the model supports flexible
+    // dimensions — for fixed-size models the edge function's existing
+    // openaiSizeForFormat() already returns a legal size.
+    if (!resolved.flexible) {
+      return { sizeIntent: intent, aspectRatioPreserved: resolved.aspectRatioPreserved };
+    }
+    return {
+      sizeIntent: intent,
+      requestedSize: resolved.size,
+      aspectRatioPreserved: resolved.aspectRatioPreserved,
+    };
+  }
+  // Gemini
+  return {
+    sizeIntent: intent,
+    requestedAspectRatio: resolved.aspectRatio,
+    imageSize: resolved.imageSize,
+    aspectRatioPreserved: resolved.aspectRatioPreserved,
+  };
+}
+
 // ── Variant-Keep deterministic-replay capability ────────────────────────
 
 /**
@@ -325,3 +398,4 @@ export function supportsDeterministicSeedReplay(modelId?: string): boolean {
   const entry = getModelById(modelId);
   return !!entry?.supportsDeterministicSeedReplay;
 }
+
