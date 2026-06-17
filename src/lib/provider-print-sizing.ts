@@ -75,6 +75,26 @@ function snap(n: number, mult: number): number {
   return Math.max(mult, Math.round(n / mult) * mult);
 }
 
+/**
+ * Pick the multiple-of-`mult` value (floor or ceil) that produces the
+ * closest aspect ratio to the target. Lets ratio fit win over the naive
+ * rounding when a different bucket is a better match.
+ */
+function snapForRatio(
+  ideal: number,
+  fixedAxis: number,
+  targetRatio: number,
+  mult: number,
+  axis: "width" | "height",
+): number {
+  const floor = Math.max(mult, Math.floor(ideal / mult) * mult);
+  const ceil = Math.max(mult, Math.ceil(ideal / mult) * mult);
+  const ratio = (val: number) =>
+    axis === "width" ? val / fixedAxis : fixedAxis / val;
+  const err = (val: number) => Math.abs(ratio(val) - targetRatio) / targetRatio;
+  return err(floor) <= err(ceil) ? floor : ceil;
+}
+
 /** Resolve SDXL pixel dims that preserve the format ratio at print intent. */
 function resolveSdxlPrintSize(formatId: string): ResolvedSdxlSize | null {
   const fmt = getPrintFormat(formatId);
