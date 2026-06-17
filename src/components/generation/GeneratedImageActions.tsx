@@ -204,6 +204,8 @@ export default function GeneratedImageActions(props: GeneratedImageActionsProps)
       {canManualUpscale && (
         <EnhanceForPrintDialog
           hasEnhanced={!!hasEnhanced}
+          sourceWidth={sourceWidth ?? null}
+          sourceHeight={sourceHeight ?? null}
           posterFormatId={selectedPrintFormat.id}
           alreadyUpscaled={!!hasEnhanced}
           recommendedRecipe={recommendedRecipe}
