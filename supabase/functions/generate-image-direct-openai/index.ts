@@ -57,7 +57,10 @@ serve(async (req) => {
       strictness,
       posterFormatHint,
       posterFormatId,
+      sizeIntent,
+      requestedSize,
     } = body || {};
+
 
     if (!prompt || typeof prompt !== "string") {
       return new Response(
