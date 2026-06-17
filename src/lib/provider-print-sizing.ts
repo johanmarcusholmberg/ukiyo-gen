@@ -141,18 +141,18 @@ function resolveOpenAIPrintSize(
   const flexible = !!model?.supportsFlexibleDimensions;
 
   if (flexible) {
-    // Flexible-dimension OpenAI models (e.g. gpt-image-2). Per OpenAI
-    // docs the long edge currently caps at ~2048 and dims should be
-    // multiples of 64. We preserve the target ratio.
+    // Flexible-dimension OpenAI models (e.g. gpt-image-2). The long edge
+    // caps at 2048; dims are emitted as multiples of 8 to allow a tight
+    // aspect-ratio fit across 5:7, 3:4, and ISO-A formats.
     const LONG = 2048;
-    const MULT = 64;
+    const MULT = 8;
     let width: number, height: number;
     if (ratio >= 1) {
       width = LONG;
-      height = snap(LONG / ratio, MULT);
+      height = snapForRatio(LONG / ratio, width, ratio, MULT, "height");
     } else {
       height = LONG;
-      width = snap(LONG * ratio, MULT);
+      width = snapForRatio(LONG * ratio, height, ratio, MULT, "width");
     }
     const preserved = isAspectRatioMatch(width, height, ratio, ASPECT_TOLERANCE);
     return {
