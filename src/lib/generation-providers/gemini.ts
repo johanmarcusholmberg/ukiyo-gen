@@ -15,6 +15,7 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { resolveEdgeFnForStyle } from "@/lib/generation-providers/_resolve-edge-fn";
+import { resolveAdapterSizingOverrides } from "@/lib/provider-print-sizing";
 import type {
   NormalizedGenerationRequest,
   NormalizedGenerationResponse,
@@ -24,14 +25,25 @@ export async function generateWithGeminiAdapter(
   req: NormalizedGenerationRequest,
 ): Promise<NormalizedGenerationResponse> {
   const edgeFn = resolveEdgeFnForStyle(req.styleKey);
+  const overrides = resolveAdapterSizingOverrides({
+    provider: "gemini",
+    modelId: req.modelId,
+    formatId: req.posterFormatId,
+    intent: req.sizeIntent,
+  });
   const body: Record<string, unknown> = {
     prompt: req.prompt,
-    aspectRatio: req.aspectRatio,
+    aspectRatio: overrides?.requestedAspectRatio ?? req.aspectRatio,
     backgroundStyle: req.backgroundStyle,
     printMode: req.printMode ?? true,
+    sizeIntent: overrides?.sizeIntent ?? req.sizeIntent ?? "standard",
     // Force Gemini path on the backend resolver.
     generatorPreference: "gemini",
   };
+  // Only attach an explicit imageSize when the model opts in (current
+  // edge gateway call ignores it otherwise — kept for forward compat).
+  if (overrides?.imageSize) body.imageSize = overrides.imageSize;
+
   if (req.posterFormatHint) body.posterFormatHint = req.posterFormatHint;
   if (req.posterFormatId) body.posterFormatId = req.posterFormatId;
   if (req.referenceImageUrl) body.sourceImageUrl = req.referenceImageUrl;
