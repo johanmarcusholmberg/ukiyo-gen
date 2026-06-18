@@ -265,32 +265,57 @@ export default function ImageGenerator({
     [variantStyleKey, mode, lastProviderUsed, generationMode],
   );
 
-  // Live master-asset dimension probe.
-  // Re-runs only when the resolved master URL changes. Skips when the URL
-  // is already the one we measured. Silent failure preserves the safe
-  // unknown-dimensions fallback inside EnhanceForPrintDialog.
-  const liveMasterUrl = enhancedImageUrl || baseImageUrl || imageUrl || null;
+  // Live asset-dimension probes.
+  // Run independently for the base and enhanced URLs so the enhance dialog can
+  // route accurately against whichever source the user selects (Auto / Original
+  // / Current enhanced). Each probe re-runs only when its URL changes; failures
+  // leave the dim null and fall back to the dialog's unknown-dimension behavior.
+  const liveBaseUrl = baseImageUrl || imageUrl || null;
+  const liveEnhancedUrl = enhancedImageUrl || null;
+
   useEffect(() => {
-    if (!liveMasterUrl) {
-      setLiveMasterDims(null);
+    if (!liveBaseUrl) {
+      setBaseProbedDims(null);
       return;
     }
-    if (liveMasterDims?.url === liveMasterUrl) return;
+    if (baseProbedDims?.url === liveBaseUrl) return;
     let cancelled = false;
-    loadImageDimensions(liveMasterUrl)
+    loadImageDimensions(liveBaseUrl)
       .then((dims) => {
         if (cancelled || !dims) return;
-        setLiveMasterDims({ width: dims.width, height: dims.height, url: liveMasterUrl });
+        setBaseProbedDims({ width: dims.width, height: dims.height, url: liveBaseUrl });
       })
       .catch((e) => {
         if (cancelled) return;
-        console.warn("[ImageGenerator] live master dimension probe failed:", e);
-        setLiveMasterDims(null);
+        console.warn("[ImageGenerator] base dimension probe failed:", e);
+        setBaseProbedDims(null);
       });
     return () => {
       cancelled = true;
     };
-  }, [liveMasterUrl, liveMasterDims?.url]);
+  }, [liveBaseUrl, baseProbedDims?.url]);
+
+  useEffect(() => {
+    if (!liveEnhancedUrl) {
+      setEnhancedProbedDims(null);
+      return;
+    }
+    if (enhancedProbedDims?.url === liveEnhancedUrl) return;
+    let cancelled = false;
+    loadImageDimensions(liveEnhancedUrl)
+      .then((dims) => {
+        if (cancelled || !dims) return;
+        setEnhancedProbedDims({ width: dims.width, height: dims.height, url: liveEnhancedUrl });
+      })
+      .catch((e) => {
+        if (cancelled) return;
+        console.warn("[ImageGenerator] enhanced dimension probe failed:", e);
+        setEnhancedProbedDims(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [liveEnhancedUrl, enhancedProbedDims?.url]);
 
   /**
    * Trigger upscale (shared for auto + manual + re-upscale).
