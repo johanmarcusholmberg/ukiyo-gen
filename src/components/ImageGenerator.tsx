@@ -181,15 +181,14 @@ export default function ImageGenerator({
   const [lastResolvedModelId, setLastResolvedModelId] = useState<string | null>(null);
   const [lastSelectedAdapterId, setLastSelectedAdapterId] = useState<string | null>(null);
   const [lastModelFallbackReason, setLastModelFallbackReason] = useState<string | null>(null);
-  // Live probed master dimensions for the currently displayed asset.
-  // Used to feed actual-dimension-aware upscale routing into EnhanceForPrintDialog.
-  // Reset whenever the master URL changes; a probe failure leaves it null
+  // Live probed dimensions for BOTH the base (original master) and the
+  // enhanced (upscaled) asset, tracked independently so EnhanceForPrintDialog
+  // can route correctly against whichever source the user selects.
+  // Reset whenever the matching URL changes; a probe failure leaves it null
   // so the dialog falls back to its safe unknown-dimensions behavior.
-  const [liveMasterDims, setLiveMasterDims] = useState<{
-    width: number;
-    height: number;
-    url: string;
-  } | null>(null);
+  type ProbedDims = { width: number; height: number; url: string } | null;
+  const [baseProbedDims, setBaseProbedDims] = useState<ProbedDims>(null);
+  const [enhancedProbedDims, setEnhancedProbedDims] = useState<ProbedDims>(null);
   const [compareOpen, setCompareOpen] = useState(false);
   // Variant fan-out — generate 4 in parallel and let the user pick.
   const [variantMode, setVariantMode] = useState(false);
