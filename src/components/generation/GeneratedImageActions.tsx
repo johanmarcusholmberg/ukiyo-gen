@@ -60,6 +60,9 @@ export interface GeneratedImageActionsProps {
   /** Actual probed dimensions of the current live master asset, if known. */
   sourceWidth?: number | null;
   sourceHeight?: number | null;
+  /** Plan #2d — original/enhanced source candidates with their probed dims. */
+  originalSource?: { url: string | null; width: number | null; height: number | null } | null;
+  enhancedSource?: { url: string | null; width: number | null; height: number | null } | null;
   recommendedRecipe: UpscaleRecipe | null;
   onEnhanceConfirm: (mode: UpscaleMode, recipe: UpscaleRecipe | null) => void;
 
@@ -120,6 +123,8 @@ export default function GeneratedImageActions(props: GeneratedImageActionsProps)
     canManualUpscale,
     sourceWidth,
     sourceHeight,
+    originalSource,
+    enhancedSource,
     recommendedRecipe,
     onEnhanceConfirm,
     savedToGallery,
@@ -206,6 +211,8 @@ export default function GeneratedImageActions(props: GeneratedImageActionsProps)
           hasEnhanced={!!hasEnhanced}
           sourceWidth={sourceWidth ?? null}
           sourceHeight={sourceHeight ?? null}
+          originalSource={originalSource ?? null}
+          enhancedSource={enhancedSource ?? null}
           posterFormatId={selectedPrintFormat.id}
           alreadyUpscaled={!!hasEnhanced}
           recommendedRecipe={recommendedRecipe}
