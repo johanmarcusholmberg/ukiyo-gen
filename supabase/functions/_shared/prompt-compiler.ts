@@ -1557,6 +1557,7 @@ export function createStyleHandler(styleKey: string) {
         strictness,
         posterFormatHint,
         posterFormatId,
+        referenceStrength,
       } = body || {};
 
       if (!prompt || typeof prompt !== "string") {
