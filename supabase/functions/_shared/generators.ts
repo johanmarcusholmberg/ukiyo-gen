@@ -120,15 +120,29 @@ export async function generateWithGemini(args: GenerateArgs): Promise<ProviderRe
     posterFormatHint: args.posterFormatHint,
   });
 
+  // Prepend a reference-strength instruction when the user attached a
+  // source image. The gateway path has no numeric image-strength knob,
+  // so the four levels are realized as prompt directives.
+  const refStrength = normalizeReferenceStrength(args.referenceStrength);
+  const promptText =
+    args.isEdit && args.sourceImageUrl && refStrength
+      ? `${REFERENCE_STRENGTH_INSTRUCTIONS[refStrength]}\n\n${compiled}`
+      : compiled;
+  if (args.isEdit && args.sourceImageUrl) {
+    console.log(
+      `[gemini] edit referenceStrength=${refStrength ?? "balanced(default)"}`,
+    );
+  }
+
   const messages = args.isEdit && args.sourceImageUrl
     ? [{
         role: "user",
         content: [
           { type: "image_url", image_url: { url: args.sourceImageUrl } },
-          { type: "text", text: compiled },
+          { type: "text", text: promptText },
         ],
       }]
-    : [{ role: "user", content: compiled }];
+    : [{ role: "user", content: promptText }];
 
   const modelId = "google/gemini-3-pro-image-preview";
 
