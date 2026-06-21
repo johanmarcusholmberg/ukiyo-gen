@@ -8,6 +8,7 @@
  */
 import type { StyleConfig } from "@/lib/style-config";
 import type { QualityTarget } from "@/lib/print-resolution";
+import type { ReferenceStrength } from "@/lib/reference-strength";
 
 export type GenerationVariant = "themed" | "freestyle" | "tertiary";
 
