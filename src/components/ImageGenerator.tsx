@@ -626,6 +626,15 @@ export default function ImageGenerator({
             ? (routeMeta.modelFallbackReason as string)
             : null),
       );
+      // Echo of the chosen reference strength (only when a source image was used).
+      const usedRefStrength =
+        (typeof (routeMeta as { referenceStrength?: unknown }).referenceStrength ===
+        "string"
+          ? ((routeMeta as { referenceStrength?: string }).referenceStrength as
+              | ReferenceStrength
+              | undefined)
+          : undefined) ?? (referenceImageUrl ? referenceStrength : undefined);
+      setLastReferenceStrength(usedRefStrength ?? null);
 
       console.log(
         `[ImageGenerator] generated provider=${gen.generationProvider} model=${gen.generationModel} ` +
