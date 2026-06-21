@@ -217,8 +217,18 @@ export default function EnhanceForPrintDialog({
     const cfg = UPSCALE_MODES[picked];
     const w = Math.round(effectiveWidth * cfg.scaleFactor);
     const h = Math.round(effectiveHeight * cfg.scaleFactor);
-    return { w, h, factor: cfg.scaleFactor };
-  }, [picked, effectiveWidth, effectiveHeight]);
+    const format = posterFormatId ? getPrintFormat(posterFormatId) : null;
+    let ppi: number | null = null;
+    let ppiTier: "preferred" | "fallback" | "below" | null = null;
+    if (format) {
+      const CM_TO_INCHES = 1 / 2.54;
+      const ppiW = w / (format.widthCm * CM_TO_INCHES);
+      const ppiH = h / (format.heightCm * CM_TO_INCHES);
+      ppi = Math.round(Math.min(ppiW, ppiH));
+      ppiTier = ppi >= 300 ? "preferred" : ppi >= 150 ? "fallback" : "below";
+    }
+    return { w, h, factor: cfg.scaleFactor, ppi, ppiTier, format };
+  }, [picked, effectiveWidth, effectiveHeight, posterFormatId]);
 
   const selectedAssessment = useMemo(() => {
     if (!posterFormatId) return null;
