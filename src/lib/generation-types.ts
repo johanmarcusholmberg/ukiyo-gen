@@ -14,6 +14,7 @@
 
 import type { GeneratorPreference, ResolvedProviderId } from "./generators";
 import type { ExecutionRoute } from "./style-routing";
+import type { ReferenceStrength } from "./reference-strength";
 
 // ── Request ──────────────────────────────────────────────────────────────
 
