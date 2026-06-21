@@ -137,6 +137,12 @@ export default function ImageGenerator({
   // when present so the existing edit/source pipeline is reused.
   const [uploadedSource, setUploadedSource] = useState<UploadedSource | null>(null);
   const effectiveSourceImageUrl = sourceImageUrl || uploadedSource?.url || null;
+  // Reference-image strength — only meaningful when a source image is in play
+  // (uploaded reference OR inline edit on the current image).
+  const [referenceStrength, setReferenceStrength] = useState<ReferenceStrength>(
+    DEFAULT_REFERENCE_STRENGTH,
+  );
+  const [lastReferenceStrength, setLastReferenceStrength] = useState<ReferenceStrength | null>(null);
   // Store the enhanced URL separately from the displayed imageUrl
   const [enhancedImageUrl, setEnhancedImageUrl] = useState<string | null>(null);
   const [isInlineEditing, setIsInlineEditing] = useState(false);
