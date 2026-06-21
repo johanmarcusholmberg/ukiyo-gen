@@ -204,6 +204,7 @@ serve(async (req) => {
       posterFormatHint,
       posterFormatId: posterFormatId ?? printFormatId,
       sourceImageUrl,
+      referenceStrength,
     };
     const innerReq = new Request(req.url, {
       method: "POST",
