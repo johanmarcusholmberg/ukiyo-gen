@@ -1134,6 +1134,11 @@ import {
   STRICTNESS_PROFILES,
   type Strictness,
 } from "./style-meta.ts";
+import {
+  buildPrintIntentLine,
+  getStylePromptMetadata,
+  mergeNegativeHints,
+} from "./style-prompt-metadata.ts";
 
 export type { Strictness } from "./style-meta.ts";
 
@@ -1228,6 +1233,11 @@ export function compilePrompt(
   options: CompileOptions = {},
 ): string {
   const rules = STYLE_RULES[styleKey];
+  const styleMeta = getStylePromptMetadata(styleKey);
+  const printIntentLine = buildPrintIntentLine(
+    styleMeta.printIntentModifier,
+    options.printMode,
+  );
 
   // Always-on quality block (print rules + base quality + wall art composition)
   const alwaysOnQuality = [
@@ -1240,6 +1250,11 @@ export function compilePrompt(
   const formatInstruction = buildPosterFormatInstruction(options.posterFormatHint);
 
   if (!rules) {
+    const negativeMerged = mergeNegativeHints([], styleMeta.negativeHints);
+    const negativeLine = negativeMerged.length
+      ? `NEGATIVE STYLE CONSTRAINTS: avoid ${negativeMerged.join(", ")}.`
+      : "";
+
     const sections = [
       `PRIMARY SUBJECT: ${userPrompt}`,
       "",
@@ -1251,6 +1266,8 @@ export function compilePrompt(
       options.aspectRatio ? `The image must have a ${options.aspectRatio} aspect ratio.` : "",
       formatInstruction,
       buildArtworkBgText(options.backgroundStyle),
+      negativeLine,
+      printIntentLine,
       styleStrictSuffix(styleKey),
       "Generate at maximum native resolution. Output the highest fidelity image possible.",
     ];
@@ -1260,6 +1277,11 @@ export function compilePrompt(
   const { aspectRatio, backgroundStyle, isEdit = false, variationIndex } = options;
 
   const edgeSafetyLines = [...EDGE_SAFETY_RULES, ...(rules.edgeSafety || [])];
+
+  // Merge style avoidRules with per-style negative hints (deduped, order
+  // preserved). Hints are appended so existing avoidRules win on ordering.
+  const mergedAvoid = mergeNegativeHints(rules.avoidRules, styleMeta.negativeHints);
+  const avoidSection = mergedAvoid.length ? mergedAvoid.join(". ") : "";
 
   const blockedSection = rules.blockedTraits?.length
     ? `\nBLOCKED TRAITS (must NEVER appear): ${rules.blockedTraits.join(". ")}`
@@ -1289,10 +1311,11 @@ export function compilePrompt(
       formatInstruction,
       `STYLE QUALITY: ${rules.qualityRules.join(". ")}`,
       `GLOBAL QUALITY: ${GLOBAL_QUALITY.join(". ")}`,
-      `AVOID: ${rules.avoidRules.join(", ")}`,
+      avoidSection ? `AVOID: ${avoidSection}` : "",
       blockedSection,
       alwaysOnQuality,
       "",
+      printIntentLine,
       styleStrictSuffix(styleKey),
       "Generate at maximum native resolution. Output the highest fidelity image possible.",
     ].filter(Boolean).join("\n");
@@ -1322,7 +1345,7 @@ export function compilePrompt(
     "",
     `EDGE SAFETY: ${edgeSafetyLines.join(". ")}`,
     "",
-    `AVOID: ${rules.avoidRules.join(". ")}`,
+    avoidSection ? `AVOID: ${avoidSection}` : "",
     blockedSection,
     alwaysOnQuality,
     "",
@@ -1330,6 +1353,7 @@ export function compilePrompt(
     ratioText,
     formatInstruction,
     variationText,
+    printIntentLine,
     "",
     styleStrictSuffix(styleKey),
     "Generate at maximum native resolution. Output the highest fidelity image possible.",
@@ -1429,13 +1453,16 @@ export function compilePromptForSDXL(
     .filter(Boolean)
     .join(", ");
 
-  // Negative prompt: provider profile + style avoidRules + strictness boosters.
-  const styleAvoid = [
-    ...(rules?.avoidRules ?? []),
-    ...(rules?.blockedTraits ?? []),
-  ]
+  // Negative prompt: provider profile + style avoidRules + per-style
+  // metadata hints + strictness boosters. Hints are deduped (case-insensitive)
+  // against avoidRules and blockedTraits so we never repeat the same term.
+  const styleMeta = getStylePromptMetadata(styleKey);
+  const styleAvoid = mergeNegativeHints(
+    [...(rules?.avoidRules ?? []), ...(rules?.blockedTraits ?? [])],
+    styleMeta.negativeHints,
+  )
     .filter((r) => r.length < 60)
-    .slice(0, 8);
+    .slice(0, 10);
 
   // Universal anti-photoreal-drift booster scaled by strictness.
   const STRICT_NEG_BOOSTERS = [
@@ -1454,7 +1481,12 @@ export function compilePromptForSDXL(
   ];
   const negBoosters = STRICT_NEG_BOOSTERS.slice(0, profile.sdxlNegativeBoost);
 
-  const negativePrompt = [...sdxl.negative, ...styleAvoid, ...negBoosters].join(", ");
+  // Final dedupe across provider-side negatives + style-side + boosters so
+  // identical terms (e.g. "photorealistic") never appear twice.
+  const negativePrompt = mergeNegativeHints(
+    [...sdxl.negative, ...styleAvoid],
+    negBoosters,
+  ).join(", ");
 
   // Aspect ratio is communicated via width/height in the SDXL request,
   // not the prompt — so we omit it here intentionally.
