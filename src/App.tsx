@@ -40,6 +40,7 @@ import StyleLab from "./pages/StyleLab";
 import NotFound from "./pages/NotFound";
 import ProviderDebug from "./pages/ProviderDebug";
 import StyleControlPanel from "./pages/StyleControlPanel";
+import PrintCalculator from "./pages/PrintCalculator";
 
 const queryClient = new QueryClient();
 
