@@ -229,6 +229,9 @@ export const STYLE_CATALOG: StyleCatalogEntry[] = [
     printSuitability: "excellent",
     textureProfile: "flat",
     styleIntent: "Old-school tattoo flash sheet",
+    negativePromptHints: ["soft watercolor", "photorealistic shading", "tiny fragile details"],
+    printIntentModifier:
+      "Use bold black outlines and clean color fills suitable for sharp poster reproduction.",
   },
   {
     route: "/retrocomic",
@@ -387,6 +390,13 @@ export const STYLE_CATALOG: StyleCatalogEntry[] = [
     family: "experimental_tool",
     visibility: "primary",
     styleIntent: "Hybrid style explorer",
+    negativePromptHints: [
+      "inconsistent mixed styles",
+      "muddy hybrid composition",
+      "random collage artifacts",
+    ],
+    printIntentModifier:
+      "Keep the blended style coherent, with one dominant visual language and print-safe composition.",
   },
   {
     route: "/graffiti",
@@ -400,6 +410,9 @@ export const STYLE_CATALOG: StyleCatalogEntry[] = [
     printSuitability: "good",
     textureProfile: "medium_texture",
     styleIntent: "Spray-painted street art",
+    negativePromptHints: ["illegible micro-text", "photorealistic wall photo", "muddy overspray"],
+    printIntentModifier:
+      "Keep letterforms and shapes large, bold, and readable; avoid fine spray noise.",
   },
   {
     route: "/pulpmagazine",
@@ -414,6 +427,9 @@ export const STYLE_CATALOG: StyleCatalogEntry[] = [
     printSuitability: "good",
     textureProfile: "heavy_texture",
     styleIntent: "1950s pulp-magazine covers",
+    negativePromptHints: ["modern digital realism", "3D render", "clean corporate poster"],
+    printIntentModifier:
+      "Use bold painted forms, strong silhouettes, and print-safe grain rather than fine photographic noise.",
   },
   {
     route: "/popart",
@@ -427,6 +443,13 @@ export const STYLE_CATALOG: StyleCatalogEntry[] = [
     printSuitability: "good",
     textureProfile: "medium_texture",
     styleIntent: "Saturated pop-art portraits",
+    negativePromptHints: [
+      "photorealistic rendering",
+      "muddy colors",
+      "subtle low-contrast palette",
+    ],
+    printIntentModifier:
+      "Use bold flat color regions and controlled halftone areas that remain legible at large print sizes.",
   },
   {
     route: "/vintage",
@@ -440,6 +463,13 @@ export const STYLE_CATALOG: StyleCatalogEntry[] = [
     printSuitability: "good",
     textureProfile: "medium_texture",
     styleIntent: "Aged vintage posters and labels",
+    negativePromptHints: [
+      "modern glossy 3D render",
+      "neon cyberpunk",
+      "ultra-sharp digital realism",
+    ],
+    printIntentModifier:
+      "Use controlled aged texture and avoid fine noise that may become muddy in large prints.",
   },
 ];
 
