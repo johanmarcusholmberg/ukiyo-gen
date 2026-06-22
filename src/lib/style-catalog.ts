@@ -127,7 +127,7 @@ export const STYLE_CATALOG: StyleCatalogEntry[] = [
     printSuitability: "good",
     textureProfile: "medium_texture",
     styleIntent: "Poetic Japanese woodblock scenes",
-    negativePromptHints: ["photorealistic", "3D render", "glossy", "cinematic photo"],
+    negativePromptHints: ["photorealistic", "3D render", "glossy", "cinematic photo", "airbrushed"],
   },
   {
     route: "/risograph",
@@ -141,6 +141,7 @@ export const STYLE_CATALOG: StyleCatalogEntry[] = [
     printSuitability: "good",
     textureProfile: "heavy_texture",
     styleIntent: "Grainy two-tone risograph poster",
+    negativePromptHints: ["glossy digital gradients", "photorealistic lighting", "tiny halftone dots"],
     printIntentModifier:
       "Use larger visible ink textures and broad halftone patterns suitable for large-format print.",
   },
@@ -156,6 +157,9 @@ export const STYLE_CATALOG: StyleCatalogEntry[] = [
     printSuitability: "excellent",
     textureProfile: "medium_texture",
     styleIntent: "Bold flat-color silkscreen poster",
+    negativePromptHints: ["photographic detail", "soft airbrush", "complex gradients"],
+    printIntentModifier:
+      "Use clean spot-color separations, bold edges, and large readable shapes suitable for poster printing.",
   },
   {
     route: "/xeroxzine",
@@ -170,6 +174,9 @@ export const STYLE_CATALOG: StyleCatalogEntry[] = [
     printSuitability: "risky",
     textureProfile: "grain_risky",
     styleIntent: "High-contrast photocopy zine look",
+    negativePromptHints: ["smooth glossy finish", "polished corporate design", "photorealistic detail"],
+    printIntentModifier:
+      "Keep photocopy textures broad and graphic, avoiding noisy fine grain that breaks during upscale.",
   },
 
   // Illustration
@@ -185,6 +192,9 @@ export const STYLE_CATALOG: StyleCatalogEntry[] = [
     printSuitability: "excellent",
     textureProfile: "flat",
     styleIntent: "Clean ink linework",
+    negativePromptHints: ["photorealistic", "heavy shading", "noisy texture", "painterly brushwork"],
+    printIntentModifier:
+      "Keep linework clean, bold enough for large-format print, and avoid fragile micro-details.",
   },
   {
     route: "/botanical",
@@ -198,6 +208,14 @@ export const STYLE_CATALOG: StyleCatalogEntry[] = [
     printSuitability: "excellent",
     textureProfile: "medium_texture",
     styleIntent: "Herbarium-style botanical plates",
+    negativePromptHints: [
+      "photorealistic background",
+      "blurry petals",
+      "cluttered composition",
+      "plastic texture",
+    ],
+    printIntentModifier:
+      "Preserve crisp botanical linework, readable ingredient shapes, and clean separation from the background.",
   },
   {
     route: "/tattooflash",
@@ -224,6 +242,9 @@ export const STYLE_CATALOG: StyleCatalogEntry[] = [
     printSuitability: "good",
     textureProfile: "heavy_texture",
     styleIntent: "Vintage comic panel art",
+    negativePromptHints: ["modern 3D render", "cinematic realism", "tiny unreadable text"],
+    printIntentModifier:
+      "Use bold comic inking, readable panels, and large halftone/Ben-Day textures.",
   },
   {
     route: "/whimsical-japanese",
@@ -237,6 +258,7 @@ export const STYLE_CATALOG: StyleCatalogEntry[] = [
     printSuitability: "good",
     textureProfile: "medium_texture",
     styleIntent: "Storybook Japanese characters",
+    negativePromptHints: ["photorealistic", "dark horror", "gritty realism", "3D render"],
   },
   {
     route: "/modernist-cocktail",
@@ -250,6 +272,13 @@ export const STYLE_CATALOG: StyleCatalogEntry[] = [
     printSuitability: "excellent",
     textureProfile: "flat",
     styleIntent: "Mid-century beverage posters",
+    negativePromptHints: [
+      "photorealistic glassware",
+      "cluttered bar scene",
+      "tiny unreadable labels",
+    ],
+    printIntentModifier:
+      "Use clean modernist shapes, readable ingredient silhouettes, and strong poster composition.",
   },
 
   // Travel Photography
@@ -265,6 +294,13 @@ export const STYLE_CATALOG: StyleCatalogEntry[] = [
     printSuitability: "good",
     textureProfile: "medium_texture",
     styleIntent: "Sunwashed Mediterranean travel art",
+    negativePromptHints: [
+      "cold corporate palette",
+      "photorealistic tourism photo",
+      "cluttered details",
+    ],
+    printIntentModifier:
+      "Keep forms warm, graphic, sunlit, and readable as a decorative wall print.",
   },
 
   // Modern & graphic
@@ -280,6 +316,9 @@ export const STYLE_CATALOG: StyleCatalogEntry[] = [
     printSuitability: "excellent",
     textureProfile: "clean",
     styleIntent: "Calm Nordic interior poster",
+    negativePromptHints: ["cluttered composition", "gritty texture", "excessive decoration"],
+    printIntentModifier:
+      "Keep shapes clean, balanced, and legible with generous negative space.",
   },
   {
     route: "/brutalistposter",
@@ -293,6 +332,9 @@ export const STYLE_CATALOG: StyleCatalogEntry[] = [
     printSuitability: "excellent",
     textureProfile: "flat",
     styleIntent: "Typographic brutalist poster",
+    negativePromptHints: ["ornate decoration", "delicate details", "photorealism"],
+    printIntentModifier:
+      "Use sharp typography, strong geometry, and large flat areas suitable for crisp large-format print.",
   },
   {
     route: "/urbannoir",
@@ -306,6 +348,14 @@ export const STYLE_CATALOG: StyleCatalogEntry[] = [
     printSuitability: "risky",
     textureProfile: "grain_risky",
     styleIntent: "Cinematic monochrome street mood",
+    negativePromptHints: [
+      "photographic noise",
+      "muddy shadows",
+      "low-resolution grain",
+      "blurry face",
+    ],
+    printIntentModifier:
+      "Prefer illustrative high-contrast noir shapes over photographic grain for large-format print.",
     upscaleNotes:
       "Grain-heavy style. Prefer illustrative contrast over photographic noise for large prints.",
   },
@@ -322,6 +372,8 @@ export const STYLE_CATALOG: StyleCatalogEntry[] = [
     textureProfile: "flat",
     styleIntent: "Calm geometric minimal art",
     negativePromptHints: ["ornate", "highly detailed", "busy background", "photorealistic texture"],
+    printIntentModifier:
+      "Preserve large clean shapes, strong negative space, and crisp edges without fake texture.",
   },
 
   // Experimental
