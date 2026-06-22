@@ -1134,6 +1134,11 @@ import {
   STRICTNESS_PROFILES,
   type Strictness,
 } from "./style-meta.ts";
+import {
+  buildPrintIntentLine,
+  getStylePromptMetadata,
+  mergeNegativeHints,
+} from "./style-prompt-metadata.ts";
 
 export type { Strictness } from "./style-meta.ts";
 
