@@ -1453,13 +1453,16 @@ export function compilePromptForSDXL(
     .filter(Boolean)
     .join(", ");
 
-  // Negative prompt: provider profile + style avoidRules + strictness boosters.
-  const styleAvoid = [
-    ...(rules?.avoidRules ?? []),
-    ...(rules?.blockedTraits ?? []),
-  ]
+  // Negative prompt: provider profile + style avoidRules + per-style
+  // metadata hints + strictness boosters. Hints are deduped (case-insensitive)
+  // against avoidRules and blockedTraits so we never repeat the same term.
+  const styleMeta = getStylePromptMetadata(styleKey);
+  const styleAvoid = mergeNegativeHints(
+    [...(rules?.avoidRules ?? []), ...(rules?.blockedTraits ?? [])],
+    styleMeta.negativeHints,
+  )
     .filter((r) => r.length < 60)
-    .slice(0, 8);
+    .slice(0, 10);
 
   // Universal anti-photoreal-drift booster scaled by strictness.
   const STRICT_NEG_BOOSTERS = [
@@ -1478,7 +1481,12 @@ export function compilePromptForSDXL(
   ];
   const negBoosters = STRICT_NEG_BOOSTERS.slice(0, profile.sdxlNegativeBoost);
 
-  const negativePrompt = [...sdxl.negative, ...styleAvoid, ...negBoosters].join(", ");
+  // Final dedupe across provider-side negatives + style-side + boosters so
+  // identical terms (e.g. "photorealistic") never appear twice.
+  const negativePrompt = mergeNegativeHints(
+    [...sdxl.negative, ...styleAvoid],
+    negBoosters,
+  ).join(", ");
 
   // Aspect ratio is communicated via width/height in the SDXL request,
   // not the prompt — so we omit it here intentionally.
