@@ -93,8 +93,8 @@ describe("Large-format escalation participates for Phase 4 styles", () => {
 
 describe("Suitability copy — Phase 4", () => {
   const baseAsset = {
-    master_width: 2048,
-    master_height: 2048,
+    base_width_px: 2048,
+    base_height_px: 2048,
   };
 
   it("loose watercolor surfaces a soft/painterly caveat (no crisp promise)", () => {
