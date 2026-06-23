@@ -31,6 +31,9 @@ export type UpscaleRecipeId =
   | "poster_print"
   | "painterly_soft"
   | "photo_restore"
+  | "decorative_linework"
+  | "flat_graphic"
+  | "illustrative_noir"
   | "safe_default";
 
 export interface UpscaleRecipe {
