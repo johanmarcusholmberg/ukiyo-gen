@@ -31,6 +31,9 @@ export type UpscaleRecipeId =
   | "poster_print"
   | "painterly_soft"
   | "photo_restore"
+  | "decorative_linework"
+  | "flat_graphic"
+  | "illustrative_noir"
   | "safe_default";
 
 export interface UpscaleRecipe {
@@ -85,6 +88,36 @@ export const UPSCALE_RECIPES: Record<UpscaleRecipeId, UpscaleRecipe> = {
     preferCleanup: true,
     preferPrint: true,
   },
+  decorative_linework: {
+    id: "decorative_linework",
+    label: "Decorative Poster — Ornamental Linework",
+    reason:
+      "Best for clean decorative poster art; preserves ornamental linework and large flat color areas",
+    recommendedMode: "realesrgan_4x",
+    fallbackMode: "tile_4x",
+    preferCleanup: false,
+    preferPrint: false,
+  },
+  flat_graphic: {
+    id: "flat_graphic",
+    label: "Flat Graphic Poster",
+    reason:
+      "Excellent large-format candidate; clean shapes and flat colors upscale well without painterly artifacts",
+    recommendedMode: "realesrgan_4x",
+    fallbackMode: "tile_4x",
+    preferCleanup: false,
+    preferPrint: false,
+  },
+  illustrative_noir: {
+    id: "illustrative_noir",
+    label: "Illustrative Noir — High Contrast",
+    reason:
+      "Best when generated with bold illustrative shadows rather than photographic noise; preserves silhouettes and hard shadow edges",
+    recommendedMode: "tile_4x",
+    fallbackMode: "realesrgan_4x",
+    preferCleanup: true,
+    preferPrint: false,
+  },
   safe_default: {
     id: "safe_default",
     label: "Safe Default",
@@ -123,10 +156,27 @@ const SOFT_PAINTERLY_FAMILY = new Set([
   "lineart",
   "lineart-minimal",
   "minimalism",
+  "loosewatercolor",
+  "loosewatercolor-freestyle",
 ]);
 
-const PHOTOREAL_FAMILY = new Set([
+const PHOTOREAL_FAMILY = new Set<string>([
+  // urbannoir was here but has been repositioned as illustrative noir (Phase 4)
+]);
+
+const DECORATIVE_LINEWORK_FAMILY = new Set([
+  "artnouveau",
+  "artnouveau-freestyle",
+]);
+
+const FLAT_GRAPHIC_FAMILY = new Set([
+  "midcenturymodern",
+  "midcenturymodern-freestyle",
+]);
+
+const ILLUSTRATIVE_NOIR_FAMILY = new Set([
   "urbannoir",
+  "urbannoir-freestyle",
 ]);
 
 /** Coarse provider family — SDXL benefits from stronger cleanup than Gemini/OpenAI. */
@@ -161,6 +211,15 @@ export function resolveUpscaleRecipe(input: ResolveRecipeInput): UpscaleRecipe {
     return printIntent
       ? UPSCALE_RECIPES.poster_print
       : UPSCALE_RECIPES.poster_clean;
+  }
+  if (DECORATIVE_LINEWORK_FAMILY.has(key)) {
+    return UPSCALE_RECIPES.decorative_linework;
+  }
+  if (FLAT_GRAPHIC_FAMILY.has(key)) {
+    return UPSCALE_RECIPES.flat_graphic;
+  }
+  if (ILLUSTRATIVE_NOIR_FAMILY.has(key)) {
+    return UPSCALE_RECIPES.illustrative_noir;
   }
   if (SOFT_PAINTERLY_FAMILY.has(key)) {
     return UPSCALE_RECIPES.painterly_soft;
