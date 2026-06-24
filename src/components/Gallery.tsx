@@ -72,6 +72,15 @@ import {
 } from "@/lib/export-formats";
 import { recordAssetCostEvent } from "@/lib/cost-events";
 import { buildUpscaleRoutingMetadata } from "@/lib/upscale-routing-metadata";
+import VersionSelector from "@/components/gallery/VersionSelector";
+import {
+  fetchUpscaleCounts,
+  bestAvailableAsset,
+  fetchImageAssets,
+  saveUpscaleAsset,
+  type ImageAsset,
+} from "@/lib/generated-image-assets";
+
 
 
 interface GalleryImage {
