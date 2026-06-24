@@ -1589,7 +1589,17 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
                 <Badge variant="secondary" className="absolute top-1.5 right-1.5 text-[10px] font-display opacity-80 z-30">
                   {img.mode === "japanese" ? "🏯" : "🎨"}
                 </Badge>
+                {(upscaleCounts.get(img.id) ?? 0) > 0 && (
+                  <Badge
+                    variant="default"
+                    className="absolute bottom-1.5 right-1.5 text-[10px] font-display z-30 bg-primary/90"
+                  >
+                    <Sparkles className="h-2.5 w-2.5 mr-1" />
+                    {upscaleCounts.get(img.id)} upscale{(upscaleCounts.get(img.id) ?? 0) === 1 ? "" : "s"}
+                  </Badge>
+                )}
               </button>
+
               <AssetMetaBadges
                 variant="compact"
                 assetRole={(img as any).asset_role || ((img as any).enhanced ? "enhanced_master" : "base_generation")}
