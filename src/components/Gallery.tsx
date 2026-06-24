@@ -1212,7 +1212,9 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
       });
       // Also persist the upscaled output as a new versioned asset so
       // subsequent operations (version selector, "best available" export,
-      // upscale-again-from-original) have a durable record. Best-effort.
+      // upscale-again-from-original) have a durable record.
+      let versionSaved = true;
+      let saveError: unknown = null;
       try {
         const existing = await fetchImageAssets(img.id);
         const origAssetId = existing.find((a) => a.asset_type === "original")?.id ?? null;
@@ -1225,15 +1227,29 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
         });
         void refreshUpscaleCounts(images.map((i) => i.id));
       } catch (e) {
-        console.warn("[handleGalleryUpscale] saveUpscaleAsset failed:", e);
+        versionSaved = false;
+        saveError = e;
+        console.error("[handleGalleryUpscale] saveUpscaleAsset failed:", e);
       }
+      // Always bump so any open VersionSelector reloads (and shows the new
+      // row if persistence succeeded, or stays consistent if it didn't).
+      bumpVersionRefresh();
       const label = UPSCALE_MODES[result.mode]?.shortLabel ?? "Upscale";
-      toast.success(
-        result.downshifted
-          ? `Downshifted to tile 4× (8× too large) — saved.`
-          : `Image upscaled via ${label} (${result.scale}×)`,
-        { duration: 4000 },
-      );
+      if (versionSaved) {
+        toast.success(
+          result.downshifted
+            ? `Downshifted to tile 4× (8× too large) — saved.`
+            : `Image upscaled via ${label} (${result.scale}×)`,
+          { duration: 4000 },
+        );
+      } else {
+        const msg = (saveError as any)?.message || "Could not save versioned copy.";
+        toast.error(
+          `Upscale ran but the versioned copy was not saved: ${msg}`,
+          { duration: 6000 },
+        );
+      }
+
     } else {
       toast.error("Upscale failed — original image preserved");
     }
