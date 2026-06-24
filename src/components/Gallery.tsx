@@ -1377,7 +1377,11 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
       generatorFamily: generatorFamilyFromProvider(selected.generation_provider),
       printIntent: selected.generation_mode === "print-ready" || !!selected.print_format_id,
     }),
+    upscaleCount: upscaleCounts.get(selected.id) ?? 0,
+    onVersionsChanged: () => { void refreshUpscaleCounts(images.map((i) => i.id)); },
+    onPrintExportFromBest: handlePrintExportFromBest,
   } : null;
+
 
   return (
     <>
