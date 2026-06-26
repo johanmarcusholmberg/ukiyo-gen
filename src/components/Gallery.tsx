@@ -1166,15 +1166,32 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
         : undefined,
     });
     if (result) {
+      // Post-upscale ratio enforcement — upscalers (especially tiled
+      // paths) can drift off the poster ratio. Pad to the exact selected
+      // poster ratio BEFORE anything downstream (preview, version store,
+      // export) sees the new URL.
+      let finalUpscaleUrl = result.imageUrl;
+      if (img.print_format_id) {
+        try {
+          const enforced = await enforcePosterRatio({
+            imageUrl: result.imageUrl,
+            formatId: img.print_format_id,
+          });
+          if (enforced?.url) finalUpscaleUrl = enforced.url;
+        } catch (e) {
+          console.warn("[handleGalleryUpscale] post-upscale enforcement failed", e);
+        }
+      }
       const update: Partial<GalleryImage> = {
         upscale_applied: true,
         enhanced: true,
-        masterUrl: result.imageUrl,
-        enhancedUrl: result.imageUrl,
+        masterUrl: finalUpscaleUrl,
+        enhancedUrl: finalUpscaleUrl,
         upscale_mode: result.mode,
         upscale_factor: result.scale,
         enhancement_model: result.provider,
       };
+
       setImages((prev) => prev.map((i) => i.id === img.id ? { ...i, ...update } : i));
       if (selected?.id === img.id) setSelected((prev) => prev ? { ...prev, ...update } : prev);
       // Persist routing-decision metadata for audit. Cost is null on
