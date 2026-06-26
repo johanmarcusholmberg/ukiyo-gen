@@ -46,6 +46,8 @@ import VariantGrid from "@/features/generation/VariantGrid";
 import type { StyleConfig } from "@/lib/style-config";
 import { type QualityTarget, getResolutionForPrintSize, formatResolution } from "@/lib/print-resolution";
 import { PRINT_FORMATS, type PrintFormat, formatExportDescription, getPosterPromptHint } from "@/lib/print-formats";
+import { enforcePosterRatio } from "@/lib/poster-ratio-enforce";
+
 import { preparePrintExport, downloadPrintExport } from "@/lib/print-export";
 import { EXPORT_FORMAT_META, getStoredExportFormat } from "@/lib/export-formats";
 import { cn } from "@/lib/utils";
