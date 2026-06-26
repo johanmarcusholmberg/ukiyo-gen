@@ -134,9 +134,10 @@ describe("estimateUpscaleOutput / 12K cap", () => {
     expect(r.warning).toBeNull();
   });
   it("blocks realesrgan when input pixels exceed the ~2MP GPU cap", () => {
-    // 4096 × 6144 = 25 MP — Replicate's Real-ESRGAN worker refuses this.
+    // 2000×1500 = 3MP — over the input cap. Output is 8000×6000 (under 12K)
+    // so the failure mode is purely the input-pixel cap.
     const r = estimateUpscaleOutput(
-      { width_px: 4096, height_px: 6144 },
+      { width_px: 2000, height_px: 1500 },
       4,
       { method: "realesrgan" },
     );
