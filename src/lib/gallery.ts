@@ -1,6 +1,8 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { QualityTarget } from "@/lib/print-resolution";
 import { loadImageDimensions } from "@/lib/image-metadata";
+import { ensurePrintMasterInSaveOpts } from "@/lib/poster-master";
+
 
 /**
  * Converts a base64 data URL to a Blob
