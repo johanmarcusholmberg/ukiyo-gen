@@ -58,7 +58,7 @@ async function pollReplicate(
   apiToken: string,
   maxAttempts = 150,
   intervalMs = 2000,
-): Promise<any | null> {
+): Promise<{ ok: true; prediction: any } | { ok: false; error: string } | null> {
   const url = `https://api.replicate.com/v1/predictions/${predictionId}`;
   for (let i = 0; i < maxAttempts; i++) {
     await new Promise((r) => setTimeout(r, intervalMs));
@@ -66,18 +66,20 @@ async function pollReplicate(
       headers: { Authorization: `Bearer ${apiToken}` },
     });
     if (!res.ok) {
-      console.error("[replicate] poll error:", res.status, await res.text());
-      return null;
+      const text = await res.text();
+      console.error("[replicate] poll error:", res.status, text);
+      return { ok: false, error: `Replicate poll error ${res.status}` };
     }
     const pred = await res.json();
-    if (pred.status === "succeeded") return pred;
+    if (pred.status === "succeeded") return { ok: true, prediction: pred };
     if (pred.status === "failed" || pred.status === "canceled") {
-      console.error("[replicate] prediction failed:", pred.error);
-      return null;
+      const errMsg = typeof pred.error === "string" ? pred.error : JSON.stringify(pred.error ?? "unknown");
+      console.error("[replicate] prediction failed:", errMsg);
+      return { ok: false, error: errMsg };
     }
   }
   console.error("[replicate] prediction timed out");
-  return null;
+  return { ok: false, error: "Replicate prediction timed out." };
 }
 
 /** Resolve a storage_path against the generated-images bucket → public URL. */
