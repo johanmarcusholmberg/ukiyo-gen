@@ -42,6 +42,11 @@ export interface ImageAsset extends ImageAssetRow {
 // 12 K long-edge hard safety cap for any upscale we initiate.
 export const MAX_LONG_EDGE_PX = 12_000;
 
+// Replicate's Real-ESRGAN worker rejects inputs over ~2.1MP (the exact
+// number from the GPU error is 2_096_704). We keep a small safety margin so
+// the frontend blocks before the round-trip.
+export const MAX_REALESRGAN_INPUT_PIXELS = 2_000_000;
+
 // ── Pure helpers (no I/O, easy to unit test) ───────────────────────────
 
 /** Sort assets ascending by version_index. */
