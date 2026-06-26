@@ -337,8 +337,14 @@ export async function deleteFromGallery(id: string, storagePath: string) {
 export async function replaceInGallery(
   opts: GallerySaveOptions & { originalId: string; originalStoragePath: string },
 ) {
+  // Print-ready invariant — same guard as saveToGallery. Run BEFORE we
+  // upload anything so an enforcement failure never leaves orphan files.
+  const guarded = await ensurePrintMasterInSaveOpts(opts);
+  opts = guarded.opts as typeof opts;
+
   // 1) Upload replacement assets first — never touch originals yet.
   const base = await uploadImage(opts.imageUrl, opts.mode);
+
 
   let enhancedPath: string | null = null;
   try {
