@@ -301,25 +301,31 @@ Deno.serve(async (req) => {
     }
 
     const t0 = Date.now();
-    const remoteUrl = method === "supir"
+    const result = method === "supir"
       ? await runSUPIR(imageUrl, apiToken)
       : await runRealESRGAN(imageUrl, scale, apiToken);
     console.log(`[enhance] method=${method} elapsed=${Date.now() - t0}ms`);
 
-    if (!remoteUrl) {
+    if (!result.ok) {
+      // Surface the real provider message so the UI can show something
+      // actionable (e.g. "input too large", "rate limited", etc.).
+      let friendly = result.error;
+      if (/total number of pixels/i.test(result.error)) {
+        friendly =
+          "This image is too large for HD 4× (Replicate's worker rejects inputs over ~2MP). Try a smaller source version, or use the Tile 4× mode instead.";
+      } else if (/throttled|rate limit/i.test(result.error)) {
+        friendly = "Replicate is rate-limiting requests right now. Please retry in a few seconds.";
+      } else if (/version does not exist/i.test(result.error)) {
+        friendly = "The upscale model is misconfigured (invalid version). Please contact support.";
+      }
       return new Response(
-        JSON.stringify({
-          error:
-            method === "supir"
-              ? "SUPIR enhancement failed on Replicate. Please retry."
-              : "Real-ESRGAN enhancement failed on Replicate. Please retry.",
-        }),
+        JSON.stringify({ error: friendly, raw: result.error }),
         { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
     // Re-host to our own bucket so the URL is stable (Replicate URLs expire).
-    const hosted = await rehostToGeneratedImages(remoteUrl);
+    const hosted = await rehostToGeneratedImages(result.url);
     if (!hosted) {
       return new Response(
         JSON.stringify({
