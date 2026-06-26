@@ -1240,7 +1240,8 @@ export default function Gallery({ refreshKey, onEditImage, styleConfig }: Galler
         await saveUpscaleAsset({
           generatedImageId: img.id,
           sourceAssetId: origAssetId,
-          imageUrl: result.imageUrl,
+          imageUrl: finalUpscaleUrl,
+
           method: result.mode,
           scaleFactor: result.scale,
         });
