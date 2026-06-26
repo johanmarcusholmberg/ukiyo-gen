@@ -1,6 +1,8 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { QualityTarget } from "@/lib/print-resolution";
 import { loadImageDimensions } from "@/lib/image-metadata";
+import { ensurePrintMasterInSaveOpts } from "@/lib/poster-master";
+
 
 /**
  * Converts a base64 data URL to a Blob
@@ -122,8 +124,16 @@ export interface GallerySaveOptions {
 }
 
 export async function saveToGallery(opts: GallerySaveOptions) {
-  // Upload the base image
+  // Print-ready invariant: a print row must enter the gallery with a
+  // master that matches the selected poster ratio. The guard pads when
+  // needed and throws when enforcement can't produce a valid master —
+  // we never persist an off-ratio print master.
+  const guarded = await ensurePrintMasterInSaveOpts(opts);
+  opts = guarded.opts;
+
+  // Upload the (now ratio-correct) base image
   const base = await uploadImage(opts.imageUrl, opts.mode);
+
 
   // Upload enhanced image if provided
   let enhancedPath: string | null = null;
@@ -327,8 +337,14 @@ export async function deleteFromGallery(id: string, storagePath: string) {
 export async function replaceInGallery(
   opts: GallerySaveOptions & { originalId: string; originalStoragePath: string },
 ) {
+  // Print-ready invariant — same guard as saveToGallery. Run BEFORE we
+  // upload anything so an enforcement failure never leaves orphan files.
+  const guarded = await ensurePrintMasterInSaveOpts(opts);
+  opts = guarded.opts as typeof opts;
+
   // 1) Upload replacement assets first — never touch originals yet.
   const base = await uploadImage(opts.imageUrl, opts.mode);
+
 
   let enhancedPath: string | null = null;
   try {
