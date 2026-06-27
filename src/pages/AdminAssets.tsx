@@ -207,6 +207,8 @@ export default function AdminAssets() {
   const [upscalingId, setUpscalingId] = useState<string | null>(null);
   const [foldersOpen, setFoldersOpen] = useState(false);
   const [costRefreshTick, setCostRefreshTick] = useState(0);
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 20;
 
   const upscaler = useUpscale();
 
@@ -351,6 +353,18 @@ export default function AdminAssets() {
     readinessFilter,
     sortBy,
   ]);
+
+  // Reset to first page whenever filter inputs change
+  useEffect(() => {
+    setPage(1);
+  }, [search, providerFilter, statusFilter, folderFilter, hasUpscaledFilter, readinessFilter, sortBy]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const pageRows = useMemo(
+    () => filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE),
+    [filtered, currentPage],
+  );
 
   /* ---------------- Summary stats ---------------- */
 
@@ -924,8 +938,35 @@ export default function AdminAssets() {
                 Select all ({filtered.length})
               </span>
             </div>
+            <div className="flex items-center justify-between gap-2 px-1 text-sm text-muted-foreground">
+              <span>
+                Showing {(currentPage - 1) * PAGE_SIZE + 1}–
+                {Math.min(currentPage * PAGE_SIZE, filtered.length)} of {filtered.length}
+              </span>
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={currentPage <= 1}
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                >
+                  Previous
+                </Button>
+                <span className="tabular-nums">
+                  Page {currentPage} / {totalPages}
+                </span>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={currentPage >= totalPages}
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {filtered.map((row) => (
+              {pageRows.map((row) => (
                 <AssetCard
                   key={row.id}
                   row={row}
@@ -939,6 +980,27 @@ export default function AdminAssets() {
                   onUpscale={(m) => handleUpscale(row, m)}
                 />
               ))}
+            </div>
+            <div className="flex items-center justify-end gap-2 px-1 pt-2">
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={currentPage <= 1}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+              >
+                Previous
+              </Button>
+              <span className="text-sm tabular-nums text-muted-foreground">
+                Page {currentPage} / {totalPages}
+              </span>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={currentPage >= totalPages}
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              >
+                Next
+              </Button>
             </div>
           </>
         )}
