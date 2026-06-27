@@ -207,6 +207,8 @@ export default function AdminAssets() {
   const [upscalingId, setUpscalingId] = useState<string | null>(null);
   const [foldersOpen, setFoldersOpen] = useState(false);
   const [costRefreshTick, setCostRefreshTick] = useState(0);
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 20;
 
   const upscaler = useUpscale();
 
