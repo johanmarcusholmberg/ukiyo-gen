@@ -504,6 +504,40 @@ export default function EnhanceForPrintDialog({
               Source: {resolvedSource.resolved === "enhanced" ? "current enhanced" : "original master"} · {resolvedSource.width}×{resolvedSource.height} px
             </p>
           )}
+          {/* Dynamic print-target readout — only when print_target_300 is picked. */}
+          {picked === "print_target_300" && printTargetPlan && (
+            <div className="rounded-sm border border-primary/30 bg-primary/5 px-2 py-1.5 mt-1 space-y-0.5">
+              <p className="font-display text-[10px] uppercase tracking-wider text-primary">
+                Print Target 300 PPI
+              </p>
+              <p className="font-display text-[11px] text-foreground leading-snug">
+                Current master: {printTargetPlan.sourceWidth}×{printTargetPlan.sourceHeight}
+                {" · "}Target: {printTargetPlan.targetWidth}×{printTargetPlan.targetHeight}
+              </p>
+              <p className="font-display text-[11px] text-muted-foreground leading-snug">
+                Required: {printTargetPlan.requiredScaleRaw.toFixed(3)}×
+                {" · "}Requested: {printTargetPlan.requestedScale}×
+                {printTargetPlan.roundedScaleUp && " (ceiled up)"}
+              </p>
+              <p
+                className={cn(
+                  "font-display text-[11px] leading-snug",
+                  printTargetPlan.clears300Ppi ? "text-primary" : "text-orange-500",
+                )}
+              >
+                Predicted: {printTargetPlan.predictedOutputWidth}×{printTargetPlan.predictedOutputHeight}
+                {" · "}≈ {printTargetPlan.effectivePpiAfterUpscale} PPI
+                {printTargetPlan.clears300Ppi
+                  ? " · clears 300 PPI"
+                  : " · below 300 PPI — not print-ready"}
+              </p>
+              {printTargetPlan.exceedsMaxLongSide && (
+                <p className="font-display text-[10px] text-destructive leading-snug">
+                  Exceeds {printTargetPlan.maxLongSide}px safety cap.
+                </p>
+              )}
+            </div>
+          )}
           {isHighCost && (
             <p className="font-display text-[11px] text-destructive flex items-center gap-1 pt-1">
               <AlertTriangle className="h-3 w-3" />
