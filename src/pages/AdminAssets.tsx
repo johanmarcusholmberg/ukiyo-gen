@@ -938,8 +938,35 @@ export default function AdminAssets() {
                 Select all ({filtered.length})
               </span>
             </div>
+            <div className="flex items-center justify-between gap-2 px-1 text-sm text-muted-foreground">
+              <span>
+                Showing {(currentPage - 1) * PAGE_SIZE + 1}–
+                {Math.min(currentPage * PAGE_SIZE, filtered.length)} of {filtered.length}
+              </span>
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={currentPage <= 1}
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                >
+                  Previous
+                </Button>
+                <span className="tabular-nums">
+                  Page {currentPage} / {totalPages}
+                </span>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={currentPage >= totalPages}
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {filtered.map((row) => (
+              {pageRows.map((row) => (
                 <AssetCard
                   key={row.id}
                   row={row}
@@ -953,6 +980,27 @@ export default function AdminAssets() {
                   onUpscale={(m) => handleUpscale(row, m)}
                 />
               ))}
+            </div>
+            <div className="flex items-center justify-end gap-2 px-1 pt-2">
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={currentPage <= 1}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+              >
+                Previous
+              </Button>
+              <span className="text-sm tabular-nums text-muted-foreground">
+                Page {currentPage} / {totalPages}
+              </span>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={currentPage >= totalPages}
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              >
+                Next
+              </Button>
             </div>
           </>
         )}
