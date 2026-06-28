@@ -13,7 +13,13 @@ export type UpscaleMode =
   | "realesrgan_4x"
   | "tile_4x"
   | "tile_8x"
-  | "print_target_300";
+  | "print_target_300"
+  | "clarity_dynamic";
+
+/** Model family used to route an upscale request. */
+export type UpscaleFamily = "realesrgan" | "clarity";
+/** High-level flow chosen by the user in the Enhance dialog. */
+export type UpscaleFlow = "target_300" | "manual";
 
 export type UpscaleCategory = "off" | "fast" | "print";
 export type UpscaleCostTier = "free" | "low" | "medium" | "high";
