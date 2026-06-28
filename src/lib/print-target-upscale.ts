@@ -219,10 +219,8 @@ export function calculatePrintTargetUpscale(
   const roundedScaleUp = requestedScale > requiredScaleRaw + 1e-9;
 
   // Source too small for any dynamic-supported scale (>8× single-pass).
-  if (
-    upscaleFamily === "realesrgan" &&
-    requiredScaleRaw > REALESRGAN_DYNAMIC_MAX_SCALE
-  ) {
+  // Both families share the 8× single-pass ceiling.
+  if (requiredScaleRaw > REALESRGAN_DYNAMIC_MAX_SCALE) {
     return {
       posterFormatId: input.posterFormatId,
       targetDpi,
@@ -282,37 +280,15 @@ export function calculatePrintTargetUpscale(
     };
   }
 
-  // Clarity decimal scale is unverified — refuse dynamic scaling there for now.
-  if (upscaleFamily === "clarity") {
-    return {
-      posterFormatId: input.posterFormatId,
-      targetDpi,
-      targetWidth: target.width,
-      targetHeight: target.height,
-      sourceWidth: input.sourceWidth,
-      sourceHeight: input.sourceHeight,
-      requiredScaleRaw,
-      requiredScaleRounded,
-      requestedScale,
-      predictedOutputWidth: predW,
-      predictedOutputHeight: predH,
-      predictedLongSide,
-      effectivePpiAfterUpscale: effectivePpi,
-      clears300Ppi: clears,
-      exceedsMaxLongSide: false,
-      status: "unsupported_dynamic_scale",
-      reason: "Clarity decimal scale_factor is not verified; dynamic target upscale routes through Real-ESRGAN.",
-      warning: "Dynamic scaling via Clarity is not enabled. Use Real-ESRGAN dynamic or fixed Clarity 4×/8×.",
-      upscaleFamily,
-      scalePrecision,
-      maxLongSide,
-      roundedScaleUp,
-      noUpscaleNeeded: false,
-    };
-  }
+  // Clarity dynamic decimal scale_factor IS supported on the async path.
+  // Both families fall through to the regular recommended branch.
 
   // Real-ESRGAN can request scales in [2, 8]. Sub-2× still needs scale=2.
-  if (requestedScale < REALESRGAN_DYNAMIC_MIN_SCALE) {
+  // Clarity has no provider minimum, so we keep sub-2 scales there.
+  if (
+    upscaleFamily === "realesrgan" &&
+    requestedScale < REALESRGAN_DYNAMIC_MIN_SCALE
+  ) {
     const clampedScale = REALESRGAN_DYNAMIC_MIN_SCALE;
     const cpW = Math.round(input.sourceWidth * clampedScale);
     const cpH = Math.round(input.sourceHeight * clampedScale);
@@ -367,7 +343,7 @@ export function calculatePrintTargetUpscale(
     clears300Ppi: clears,
     exceedsMaxLongSide: false,
     status: "dynamic_upscale_recommended",
-    reason: `Dynamic Real-ESRGAN ${requestedScale}× clears the ${target.width}×${target.height} target (≥ ${targetDpi} PPI at ${format.label}).`,
+    reason: `Dynamic ${upscaleFamily === "clarity" ? "Clarity" : "Real-ESRGAN"} ${requestedScale}× clears the ${target.width}×${target.height} target (≥ ${targetDpi} PPI at ${format.label}).`,
     warning: null,
     upscaleFamily,
     scalePrecision,

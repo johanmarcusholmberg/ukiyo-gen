@@ -95,14 +95,17 @@ describe("calculatePrintTargetUpscale — guards", () => {
     expect(p.warning).toBeTruthy();
   });
 
-  it("Clarity dynamic is marked unsupported (routes via Real-ESRGAN)", () => {
+  it("Clarity dynamic produces the same plan shape (decimal scale supported)", () => {
     const p = calculatePrintTargetUpscale({
       sourceWidth: 1147,
       sourceHeight: 1606,
       posterFormatId: "print_50x70",
       upscaleFamily: "clarity",
     });
-    expect(p.status).toBe("unsupported_dynamic_scale");
+    expect(p.status).toBe("dynamic_upscale_recommended");
+    expect(p.upscaleFamily).toBe("clarity");
+    expect(p.requestedScale).toBeGreaterThanOrEqual(5.15);
+    expect(p.clears300Ppi).toBe(true);
   });
 
   it("default max long side matches the central constant", () => {

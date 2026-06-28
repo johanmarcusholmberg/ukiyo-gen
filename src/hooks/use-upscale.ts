@@ -9,6 +9,8 @@ import {
   type UpscaleMode,
   type UpscaleStage,
   type UpscaleJobStatus,
+  type UpscaleFamily,
+  type UpscaleFlow,
 } from "@/lib/upscale-modes";
 import {
   resolveUpscaleRecipe,
@@ -20,12 +22,17 @@ import {
   runReplicateUpscale,
   type ReplicateUpscaleMethod,
 } from "@/lib/upscale-providers/replicate";
+import { isWithinPosterRatio, preparePosterMaster } from "@/lib/poster-master";
 
 /**
  * Modes that route through the dedicated direct-Replicate edge function
  * (`upscale-image-replicate`) instead of the legacy `upscale-image` dispatcher.
  *
  * These modes have NO Lovable fallback — failures surface to the user.
+ *
+ * `clarity_dynamic` is intentionally absent: Clarity stays on the async
+ * `upscale-image` route so the webhook + `upscale_jobs` table own the
+ * lifecycle (a Clarity pass can run 1–3 min, well past the 150s sync cap).
  */
 const DIRECT_REPLICATE_METHOD: Partial<Record<UpscaleMode, ReplicateUpscaleMethod>> = {
   realesrgan_4x: "realesrgan",
@@ -57,11 +64,33 @@ interface UpscaleOptions {
   /** Optional recipe metadata — recorded on the upscale_jobs row. */
   recipe?: Pick<UpscaleRecipe, "id" | "label" | "reason"> | null;
   /**
-   * REQUIRED for `print_target_300`. Decimal scale (e.g. 5.15) calculated
-   * from the corrected poster master by `calculatePrintTargetUpscale`.
-   * Edge function clamps into [2, 8].
+   * REQUIRED for `print_target_300` and `clarity_dynamic`. Decimal scale
+   * (e.g. 5.15) calculated from the corrected poster master by
+   * `calculatePrintTargetUpscale` or `planManualUpscale`. Edge functions
+   * clamp into the family's supported range.
    */
   dynamicScale?: number;
+  /* ------------------------------------------------------------------ */
+  /* Print Upscale Redesign 2026-Q2 — new routing/safety opts.          */
+  /* ------------------------------------------------------------------ */
+  /** Model family. Determines whether we go direct (realesrgan) or async (clarity). */
+  upscaleFamily?: UpscaleFamily;
+  /** target_300 = Recommended flow, manual = Advanced flow. Logged to job. */
+  upscaleFlow?: UpscaleFlow;
+  /**
+   * Source poster format. When set, useUpscale REQUIRES the source to be a
+   * corrected master on this ratio and corrects it if not (no silent
+   * provider call against an off-ratio source).
+   */
+  posterFormatId?: string | null;
+  /**
+   * Dialog's promise the source is already a corrected poster master. We
+   * still re-verify the ratio before any provider call — this flag only
+   * affects whether we can skip the correction round-trip in the happy path.
+   */
+  sourceWasCorrectedMaster?: boolean;
+  /** Optional routing metadata persisted onto the upscale_jobs row. */
+  routingMetadata?: Record<string, unknown>;
 }
 
 /**
@@ -123,6 +152,54 @@ export function useUpscale() {
       setJobId(null);
       setJobStatus(null);
 
+      /* ---------- Corrected-master pre-flight (2026-Q2 redesign) ---------- */
+      // Every print-target / manual upscale must run against a corrected
+      // poster master. If a posterFormatId is supplied we re-verify the
+      // ratio and run `preparePosterMaster` when needed. Failure to correct
+      // BLOCKS the upscale — there is no silent provider call against an
+      // off-ratio source. `sourceWasCorrectedMaster` from the dialog only
+      // skips the round-trip when the ratio probe passes.
+      let effectiveSourceUrl = sourceUrl;
+      let sourceWasCorrectedMaster = !!opts?.sourceWasCorrectedMaster;
+      if (opts?.posterFormatId) {
+        try {
+          const master = await preparePosterMaster({
+            rawImageUrl: sourceUrl,
+            posterFormatId: opts.posterFormatId,
+          });
+          effectiveSourceUrl = master.masterImageUrl;
+          sourceWasCorrectedMaster = true;
+          if (
+            !isWithinPosterRatio(
+              master.masterWidth,
+              master.masterHeight,
+              opts.posterFormatId,
+            )
+          ) {
+            cleanupTimers();
+            setStage("failed");
+            throw new Error(
+              "Upscale blocked: corrected master is still off the selected poster ratio.",
+            );
+          }
+        } catch (err) {
+          cleanupTimers();
+          setStage("failed");
+          throw err instanceof Error
+            ? err
+            : new Error("Upscale blocked: poster-master correction failed.");
+        }
+      }
+      // Hard invariant — no provider call without a corrected master flag
+      // once a poster format is in play.
+      if (opts?.posterFormatId && !sourceWasCorrectedMaster) {
+        cleanupTimers();
+        setStage("failed");
+        throw new Error(
+          "Upscale blocked: source was not confirmed as a corrected poster master.",
+        );
+      }
+
       const isAsync = isAsyncUpscaleMode(mode);
 
       // Drive a soft staged animation while we wait for either the sync
@@ -163,7 +240,7 @@ export function useUpscale() {
             effectiveScale = Math.min(8, Math.max(2, opts.dynamicScale));
           }
           const direct = await runReplicateUpscale({
-            imageUrl: sourceUrl,
+            imageUrl: effectiveSourceUrl,
             method: directMethod,
             scale: effectiveScale,
           });
@@ -199,13 +276,51 @@ export function useUpscale() {
           return result;
         }
 
+        /* ---------------- CLARITY DYNAMIC PATH (async) ---------------- */
+        // Explicit contract — see `upscale-image` edge fn. The dispatcher
+        // routes on `upscaleFamily === "clarity"` and uses the supplied
+        // decimal `requestedScale`/`scale_factor` instead of the legacy
+        // `tile_4x` / `tile_8x` mode branches. No silent fallback.
+        const isClarityDynamic =
+          mode === "clarity_dynamic" || opts?.upscaleFamily === "clarity";
+        if (isClarityDynamic) {
+          if (!opts?.dynamicScale || opts.dynamicScale <= 1) {
+            cleanupTimers();
+            setStage("failed");
+            throw new Error(
+              "Clarity dynamic upscale requires a calculated dynamicScale (use calculatePrintTargetUpscale or planManualUpscale).",
+            );
+          }
+          if (!opts.posterFormatId || !sourceWasCorrectedMaster) {
+            cleanupTimers();
+            setStage("failed");
+            throw new Error(
+              "Clarity dynamic upscale requires a corrected poster master.",
+            );
+          }
+        }
+
         const { data, error } = await supabase.functions.invoke("upscale-image", {
-          body: {
-            imageUrl: sourceUrl,
-            mode,
-            galleryImageId: opts?.galleryImageId,
-            recipe: opts?.recipe ?? undefined,
-          },
+          body: isClarityDynamic
+            ? {
+                imageUrl: effectiveSourceUrl,
+                mode: "clarity_dynamic",
+                upscaleFlow: opts?.upscaleFlow ?? "manual",
+                upscaleFamily: "clarity",
+                requestedScale: opts!.dynamicScale,
+                scale_factor: opts!.dynamicScale,
+                sourceWasCorrectedMaster: true,
+                posterFormatId: opts!.posterFormatId,
+                galleryImageId: opts?.galleryImageId,
+                recipe: opts?.recipe ?? undefined,
+                metadata: opts?.routingMetadata ?? undefined,
+              }
+            : {
+                imageUrl: effectiveSourceUrl,
+                mode,
+                galleryImageId: opts?.galleryImageId,
+                recipe: opts?.recipe ?? undefined,
+              },
         });
 
         if (error) throw error;

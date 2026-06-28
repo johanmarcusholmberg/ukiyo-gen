@@ -62,6 +62,7 @@ const COST_RANK: Record<UpscaleMode, number> = {
   print_target_300: 1, // single dynamic Real-ESRGAN pass — same cost tier as 4×
   tile_4x: 2,
   tile_8x: 4,
+  clarity_dynamic: 3, // tiled Clarity at decimal scale — between tile_4x and tile_8x
 };
 
 const CM_TO_IN = 1 / 2.54;
