@@ -528,6 +528,17 @@ serve(async (req) => {
             preDownscaled,
             async: true,
             recipeId: recipe?.id ?? undefined,
+            // Routing metadata for the print upscale redesign — only set
+            // for the clarity_dynamic branch; legacy modes leave these null.
+            upscaleFlow: mode === "clarity_dynamic" ? body.upscaleFlow : undefined,
+            upscaleFamily: mode === "clarity_dynamic" ? "clarity" : undefined,
+            requestedScale: mode === "clarity_dynamic" ? appliedScale : undefined,
+            posterFormatId:
+              mode === "clarity_dynamic" ? body.posterFormatId : undefined,
+            sourceWasCorrectedMaster:
+              mode === "clarity_dynamic" ? true : undefined,
+            routingMetadata:
+              mode === "clarity_dynamic" ? body.metadata ?? undefined : undefined,
           },
         })
         .select("id")
