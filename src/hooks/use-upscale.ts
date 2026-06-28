@@ -152,6 +152,54 @@ export function useUpscale() {
       setJobId(null);
       setJobStatus(null);
 
+      /* ---------- Corrected-master pre-flight (2026-Q2 redesign) ---------- */
+      // Every print-target / manual upscale must run against a corrected
+      // poster master. If a posterFormatId is supplied we re-verify the
+      // ratio and run `preparePosterMaster` when needed. Failure to correct
+      // BLOCKS the upscale — there is no silent provider call against an
+      // off-ratio source. `sourceWasCorrectedMaster` from the dialog only
+      // skips the round-trip when the ratio probe passes.
+      let effectiveSourceUrl = sourceUrl;
+      let sourceWasCorrectedMaster = !!opts?.sourceWasCorrectedMaster;
+      if (opts?.posterFormatId) {
+        try {
+          const master = await preparePosterMaster({
+            rawImageUrl: sourceUrl,
+            posterFormatId: opts.posterFormatId,
+          });
+          effectiveSourceUrl = master.masterImageUrl;
+          sourceWasCorrectedMaster = true;
+          if (
+            !isWithinPosterRatio(
+              master.masterWidth,
+              master.masterHeight,
+              opts.posterFormatId,
+            )
+          ) {
+            cleanupTimers();
+            setStage("failed");
+            throw new Error(
+              "Upscale blocked: corrected master is still off the selected poster ratio.",
+            );
+          }
+        } catch (err) {
+          cleanupTimers();
+          setStage("failed");
+          throw err instanceof Error
+            ? err
+            : new Error("Upscale blocked: poster-master correction failed.");
+        }
+      }
+      // Hard invariant — no provider call without a corrected master flag
+      // once a poster format is in play.
+      if (opts?.posterFormatId && !sourceWasCorrectedMaster) {
+        cleanupTimers();
+        setStage("failed");
+        throw new Error(
+          "Upscale blocked: source was not confirmed as a corrected poster master.",
+        );
+      }
+
       const isAsync = isAsyncUpscaleMode(mode);
 
       // Drive a soft staged animation while we wait for either the sync
