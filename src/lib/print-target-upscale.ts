@@ -219,10 +219,8 @@ export function calculatePrintTargetUpscale(
   const roundedScaleUp = requestedScale > requiredScaleRaw + 1e-9;
 
   // Source too small for any dynamic-supported scale (>8× single-pass).
-  if (
-    upscaleFamily === "realesrgan" &&
-    requiredScaleRaw > REALESRGAN_DYNAMIC_MAX_SCALE
-  ) {
+  // Both families share the 8× single-pass ceiling.
+  if (requiredScaleRaw > REALESRGAN_DYNAMIC_MAX_SCALE) {
     return {
       posterFormatId: input.posterFormatId,
       targetDpi,
