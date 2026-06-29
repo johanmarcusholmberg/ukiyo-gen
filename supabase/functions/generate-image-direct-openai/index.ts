@@ -182,7 +182,7 @@ serve(async (req) => {
 
     const json = await res.json();
     const item = Array.isArray(json?.data) ? json.data[0] : null;
-    // gpt-image-1 returns base64 by default (`b64_json`). We re-emit as a
+    // gpt-image-2 returns base64 by default (`b64_json`). We re-emit as a
     // data URL so the rest of the pipeline (which expects a string URL)
     // can persist it via the existing master-asset upload flow.
     let imageUrl: string | null = null;
@@ -200,7 +200,10 @@ serve(async (req) => {
     }
 
     const elapsedMs = Date.now() - startedAt;
-    console.log(`[direct-openai] ✓ elapsed=${elapsedMs}ms size=${size}`);
+    console.log(
+      `[direct-openai] ✓ model=${OPENAI_MODEL} elapsed=${elapsedMs}ms requestedSize=${size} ` +
+        `posterFormatId=${posterFormatId ?? "none"}`,
+    );
 
     return new Response(
       JSON.stringify({
@@ -215,9 +218,9 @@ serve(async (req) => {
         requestedHeight: height,
         requestedSize: size,
         requestedAspectRatio: aspectRatio ?? null,
-        providerExactMatch: sized.exact,
-        providerAdjusted: !sized.exact,
-        sizeSource: sized.source,
+        providerExactMatch,
+        providerAdjusted: !providerExactMatch,
+        sizeSource,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
