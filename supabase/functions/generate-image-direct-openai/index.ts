@@ -1,15 +1,12 @@
 /**
- * Direct OpenAI (gpt-image-1) edge function — adapter 4 backend.
+ * Direct OpenAI (gpt-image-2) edge function — adapter 4 backend.
  *
  * Calls OpenAI's Image API directly using OPENAI_API_KEY. Independent of
- * Lovable's gateway and credits. Uses the current GPT Image API path
- * (`/v1/images/generations` with model `gpt-image-1`) — NOT the legacy
- * DALL·E-only `/images/generations?model=dall-e-3` shape.
+ * Lovable's gateway and credits. Uses gpt-image-2 with exact poster-format
+ * pixel sizes (no legacy 1024×1536 / 1024×1024 / auto fallbacks).
  *
  * Reuses the SAME shared `compilePrompt()` used by the Gemini path so
- * style adherence stays consistent across providers — OpenAI's text
- * encoder behaves more like Gemini than SDXL, so the natural-language
- * compiled prompt is the right choice (not the front-loaded SDXL form).
+ * style adherence stays consistent across providers.
  */
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
@@ -18,7 +15,7 @@ import {
   STYLE_RULES,
   compilePromptForOpenAI,
 } from "../_shared/prompt-compiler.ts";
-import { openaiSizeForFormat } from "../_shared/provider-sizing.ts";
+import { openaiGptImage2SizeForFormat } from "../_shared/provider-sizing.ts";
 
 interface Body {
   prompt?: string;
@@ -33,12 +30,14 @@ interface Body {
   posterFormatHint?: string;
   posterFormatId?: string;
   sizeIntent?: "preview" | "standard" | "print";
-  /** Explicit "WxH" override (flexible-dim models only). */
+  /** Explicit "WxH" override (gpt-image-2 only, multiples of 16). */
   requestedSize?: string;
+  /** Optional explicit portrait/landscape override. */
+  orientation?: "portrait" | "landscape";
 }
 
 
-const OPENAI_MODEL = "gpt-image-1";
+const OPENAI_MODEL = "gpt-image-2";
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
