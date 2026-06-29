@@ -58,6 +58,7 @@ serve(async (req) => {
       posterFormatId,
       sizeIntent,
       requestedSize,
+      orientation,
     } = body || {};
 
 
@@ -92,7 +93,7 @@ serve(async (req) => {
     // Use the OpenAI-tuned compiler — same canonical prompt as Gemini, plus
     // a category-aware PROVIDER GUIDANCE tail that locks illustration /
     // non-photorealism for poster, screen-print, and minimal styles where
-    // gpt-image-1 tends to drift toward photographic output.
+    // OpenAI sometimes drifts toward photographic output.
     const compiled = compilePromptForOpenAI(trimmedPrompt, styleKey, {
       aspectRatio,
       backgroundStyle,
@@ -105,25 +106,47 @@ serve(async (req) => {
     });
     const compiledPrompt = compiled.prompt;
 
-    const sized = openaiSizeForFormat(posterFormatId, aspectRatio);
-    let size: string = sized.size;
-    let width = sized.width;
-    let height = sized.height;
-    let sizeSource: string = sized.source;
+    // Exact poster-format pixel size for gpt-image-2. No legacy
+    // 1024×1024 / 1024×1536 fallbacks for mapped formats; no white-border
+    // padding; the selected format directly controls the requested W×H.
+    const exactSized = openaiGptImage2SizeForFormat(
+      posterFormatId,
+      orientation === "portrait" || orientation === "landscape" ? orientation : undefined,
+    );
+    let size: string;
+    let width: number;
+    let height: number;
+    let sizeSource: string;
+    let providerExactMatch: boolean;
+    if (exactSized) {
+      size = exactSized.size;
+      width = exactSized.width;
+      height = exactSized.height;
+      sizeSource = exactSized.source;
+      providerExactMatch = exactSized.exact;
+    } else {
+      // No format selected — fall back to a square 1024×1024 default.
+      size = "1024x1024";
+      width = 1024;
+      height = 1024;
+      sizeSource = "default";
+      providerExactMatch = false;
+    }
     // Honor adapter-provided "WxH" override (capability-gated client-side).
     if (typeof requestedSize === "string" && /^\d{3,4}x\d{3,4}$/.test(requestedSize)) {
       const [w, h] = requestedSize.split("x").map(Number);
-      if (w >= 256 && w <= 2048 && h >= 256 && h <= 2048 && w % 8 === 0 && h % 8 === 0) {
+      if (w >= 256 && w <= 4096 && h >= 256 && h <= 4096 && w % 16 === 0 && h % 16 === 0) {
         size = requestedSize; width = w; height = h; sizeSource = "override";
       }
     }
     const startedAt = Date.now();
 
     console.log(
-      `[direct-openai] style=${styleKey} category=${compiled.category} ` +
-        `prompt_len=${compiledPrompt.length} size=${size} sizeSource=${sizeSource} ` +
-        `sizeIntent=${sizeIntent ?? "standard"} exact=${sized.exact} posterFormatId=${posterFormatId ?? "none"} quality=${quality ?? "high"}`,
+      `[direct-openai] model=${OPENAI_MODEL} style=${styleKey} category=${compiled.category} ` +
+        `prompt_len=${compiledPrompt.length} requestedSize=${size} sizeSource=${sizeSource} ` +
+        `sizeIntent=${sizeIntent ?? "standard"} exact=${providerExactMatch} posterFormatId=${posterFormatId ?? "none"} quality=${quality ?? "high"}`,
     );
+
 
 
     const res = await fetch("https://api.openai.com/v1/images/generations", {
