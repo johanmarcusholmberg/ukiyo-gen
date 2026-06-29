@@ -26,7 +26,7 @@ export async function generateWithOpenAIAdapter(
 ): Promise<NormalizedGenerationResponse> {
   if (req.referenceImageUrl || req.isEdit) {
     throw new Error(
-      "Direct OpenAI (gpt-image-1) does not support image-to-image edits in this phase — use the Lovable adapter for edits.",
+      "Direct OpenAI (gpt-image-2) does not support image-to-image edits in this phase — use the Lovable adapter for edits.",
     );
   }
 
