@@ -24,6 +24,7 @@
 import { getPrintFormat, isAspectRatioMatch } from "@/lib/print-formats";
 import { getModelById } from "@/lib/generation-providers/registry";
 import { getProviderSize } from "@/lib/provider-size-map";
+import { gptImage2SizeForFormat } from "@/lib/openai-gpt-image-2-sizes";
 
 export type SizeIntent = "preview" | "standard" | "print";
 
