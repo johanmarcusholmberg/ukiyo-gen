@@ -180,16 +180,18 @@ function canvasToBlob(canvas: HTMLCanvasElement, type: string): Promise<Blob> {
 
 /**
  * Enforce the poster format ratio on a freshly generated image. When the
- * provider returned an off-ratio asset, this pads it to the exact ratio
- * (centred, neutral white background) and uploads the corrected PNG.
- * Returns the original URL untouched when the image already matches
- * within tolerance.
+ * provider returned an off-ratio asset, this corrects it to the exact
+ * ratio (padded by default; cropped when `mode: "crop"` is passed) and
+ * uploads the corrected PNG. Returns the original URL untouched when the
+ * image already matches within tolerance.
  */
 export async function enforcePosterRatio(input: {
   imageUrl: string;
   formatId: string;
-  /** Background color used for padding (defaults to white). */
+  /** Background color used for padding (defaults to white). Ignored when mode="crop". */
   background?: string;
+  /** "pad" (default) preserves the entire image; "crop" trims the long axis. */
+  mode?: RatioCorrectionMode;
 }): Promise<PosterRatioEnforcementResult | null> {
   const fmt = getPrintFormat(input.formatId);
   if (!fmt) return null;
@@ -198,7 +200,8 @@ export async function enforcePosterRatio(input: {
   const sourceWidth = img.naturalWidth || img.width;
   const sourceHeight = img.naturalHeight || img.height;
 
-  const plan = planPosterRatioCorrection(sourceWidth, sourceHeight, input.formatId);
+  const mode: RatioCorrectionMode = input.mode ?? "pad";
+  const plan = planPosterRatioCorrection(sourceWidth, sourceHeight, input.formatId, mode);
   if (!plan) return null;
 
   if (plan.method === "none") {
@@ -217,9 +220,24 @@ export async function enforcePosterRatio(input: {
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Canvas 2D context unavailable");
 
-  ctx.fillStyle = input.background ?? "#FFFFFF";
-  ctx.fillRect(0, 0, plan.outputWidth, plan.outputHeight);
-  ctx.drawImage(img, plan.padLeft, plan.padTop, sourceWidth, sourceHeight);
+  if (plan.method === "pad") {
+    ctx.fillStyle = input.background ?? "#FFFFFF";
+    ctx.fillRect(0, 0, plan.outputWidth, plan.outputHeight);
+    ctx.drawImage(img, plan.padLeft, plan.padTop, sourceWidth, sourceHeight);
+  } else {
+    // crop: draw the cropped region into a canvas of the target size.
+    ctx.drawImage(
+      img,
+      plan.cropLeft,
+      plan.cropTop,
+      plan.outputWidth,
+      plan.outputHeight,
+      0,
+      0,
+      plan.outputWidth,
+      plan.outputHeight,
+    );
+  }
 
   const blob = await canvasToBlob(canvas, "image/png");
   const filename = `normalized-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.png`;
