@@ -302,7 +302,7 @@ serve(async (req) => {
     const elapsedMs = Date.now() - startedAt;
     console.log(
       `[direct-openai] ✓ model=${OPENAI_MODEL} elapsed=${elapsedMs}ms requestedSize=${size} ` +
-        `posterFormatId=${posterFormatId ?? "none"}`,
+        `posterFormatId=${posterFormatId ?? "none"} apiRoute=${apiRoute}`,
     );
 
     return new Response(
@@ -321,6 +321,9 @@ serve(async (req) => {
         providerExactMatch,
         providerAdjusted: !providerExactMatch,
         sizeSource,
+        apiRoute,
+        isEdit: editMode,
+        referenceStrength: editMode ? (refStrength ?? "balanced") : null,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
