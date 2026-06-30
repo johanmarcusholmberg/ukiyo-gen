@@ -45,6 +45,7 @@ function baseRequest(
     styleKey: "modern_minimalist",
     aspectRatio: "5:7",
     posterFormatId: "print_50x70",
+    modelId: "openai:gpt-image-2",
     sizeIntent: "print",
     printMode: true,
     ...overrides,
