@@ -160,14 +160,23 @@ serve(async (req) => {
     const compiled = compilePromptForOpenAI(trimmedPrompt, styleKey, {
       aspectRatio,
       backgroundStyle,
-      isEdit: false,
+      isEdit: editMode,
       printMode: !!printMode,
       provider: "openai",
       strictness,
       posterFormatHint:
         typeof posterFormatHint === "string" ? posterFormatHint : undefined,
     });
-    const compiledPrompt = compiled.prompt;
+    // For edits, prepend the reference-strength directive so OpenAI honors
+    // the user's "how much of the uploaded image to keep" selection. No
+    // numeric strength parameter is exposed by the images-edits endpoint;
+    // the directive is the contract.
+    const refStrengthInstruction = editMode
+      ? REFERENCE_STRENGTH_INSTRUCTIONS[refStrength ?? "balanced"]
+      : null;
+    const compiledPrompt = refStrengthInstruction
+      ? `${refStrengthInstruction}\n\n${compiled.prompt}`
+      : compiled.prompt;
 
     // Exact poster-format pixel size for gpt-image-2. No legacy
     // 1024×1024 / 1024×1536 fallbacks for mapped formats; no white-border
