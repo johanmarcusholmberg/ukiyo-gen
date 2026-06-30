@@ -115,27 +115,18 @@ describe("generateWithOpenAIAdapter — image-to-image", () => {
 });
 
 describe("generateWithOpenAIAdapter — exact gpt-image-2 poster sizing", () => {
-  const cases: Array<{
-    formatId: string;
-    orientation: "portrait" | "landscape";
-    expected: string;
-  }> = [
-    { formatId: "50x70", orientation: "portrait", expected: "1600x2240" },
-    { formatId: "50x70", orientation: "landscape", expected: "2240x1600" },
-    { formatId: "a4", orientation: "portrait", expected: "1120x1584" },
-    { formatId: "a4", orientation: "landscape", expected: "1584x1120" },
-    { formatId: "a3", orientation: "portrait", expected: "1584x2240" },
-    { formatId: "a3", orientation: "landscape", expected: "2240x1584" },
-    { formatId: "a2", orientation: "portrait", expected: "2240x3168" },
-    { formatId: "a2", orientation: "landscape", expected: "3168x2240" },
+  const cases: Array<{ formatId: string; expected: string }> = [
+    { formatId: "print_50x70", expected: "1600x2240" },
+    { formatId: "print_a4", expected: "1120x1584" },
+    { formatId: "print_a3", expected: "1584x2240" },
+    { formatId: "print_a2", expected: "2240x3168" },
   ];
 
   for (const c of cases) {
-    it(`maps ${c.formatId} ${c.orientation} → ${c.expected}`, async () => {
+    it(`maps ${c.formatId} portrait → ${c.expected}`, async () => {
       await generateWithOpenAIAdapter(
         baseRequest({
           posterFormatId: c.formatId,
-          orientation: c.orientation,
           referenceImageUrl: "https://example.com/ref.png",
           referenceStrength: "balanced",
           isEdit: true,
@@ -150,9 +141,7 @@ describe("generateWithOpenAIAdapter — exact gpt-image-2 poster sizing", () => 
   it("never sends legacy OpenAI sizes (1024x1024 / 1024x1536) for mapped formats", async () => {
     for (const c of cases) {
       invokeCalls.length = 0;
-      await generateWithOpenAIAdapter(
-        baseRequest({ posterFormatId: c.formatId, orientation: c.orientation }),
-      );
+      await generateWithOpenAIAdapter(baseRequest({ posterFormatId: c.formatId }));
       const size = invokeCalls[0].body.requestedSize as string;
       expect(size).not.toBe("1024x1024");
       expect(size).not.toBe("1024x1536");
@@ -161,3 +150,4 @@ describe("generateWithOpenAIAdapter — exact gpt-image-2 poster sizing", () => 
     }
   });
 });
+
