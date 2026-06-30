@@ -24,18 +24,14 @@ import type {
 export async function generateWithOpenAIAdapter(
   req: NormalizedGenerationRequest,
 ): Promise<NormalizedGenerationResponse> {
-  if (req.referenceImageUrl || req.isEdit) {
-    throw new Error(
-      "Direct OpenAI (gpt-image-2) does not support image-to-image edits in this phase — use the Lovable adapter for edits.",
-    );
-  }
-
   const overrides = resolveAdapterSizingOverrides({
     provider: "openai",
     modelId: req.modelId,
     formatId: req.posterFormatId,
     intent: req.sizeIntent,
   });
+
+  const isEdit = !!req.referenceImageUrl || !!req.isEdit;
 
   const body: Record<string, unknown> = {
     prompt: req.prompt,
@@ -53,6 +49,15 @@ export async function generateWithOpenAIAdapter(
   if (req.posterFormatId) body.posterFormatId = req.posterFormatId;
   if (req.requestedModelId) body.requestedModelId = req.requestedModelId;
   if (req.providerModelId) body.providerModelId = req.providerModelId;
+
+  // Image-to-image edit path: forward the uploaded reference + the user's
+  // reference-strength selection so the edge function can call the OpenAI
+  // images-edit endpoint with the correct prompt directive.
+  if (isEdit && req.referenceImageUrl) {
+    body.sourceImageUrl = req.referenceImageUrl;
+    body.isEdit = true;
+    if (req.referenceStrength) body.referenceStrength = req.referenceStrength;
+  }
 
   const { data, error } = await supabase.functions.invoke(
     "generate-image-direct-openai",
@@ -74,7 +79,7 @@ export async function generateWithOpenAIAdapter(
     styleKey: req.styleKey,
     fallbackUsed: false,
     strategy: "manual",
-    executionRoute: "direct_openai",
+    executionRoute: isEdit ? "direct_openai" : "direct_openai",
     requestedWidth: data.requestedWidth ?? data.width,
     requestedHeight: data.requestedHeight ?? data.height,
     requestedAspectRatio: data.requestedAspectRatio ?? req.aspectRatio,
@@ -85,6 +90,9 @@ export async function generateWithOpenAIAdapter(
       requestedSize: data.requestedSize,
       sizeSource: data.sizeSource,
       requestedModelId: req.requestedModelId ?? null,
+      isEdit,
+      referenceStrength: isEdit ? req.referenceStrength ?? null : null,
+      apiRoute: data.apiRoute ?? null,
       modelFallbackReason:
         req.providerModelId && req.providerModelId !== (data.model ?? "gpt-image-2")
           ? `requested ${req.providerModelId} but adapter ran ${data.model ?? "gpt-image-2"}`
