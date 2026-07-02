@@ -49,6 +49,7 @@ import AssetMetaBadges from "@/components/AssetMetaBadges";
 import { classifyPrintReadiness } from "@/lib/image-metadata";
 import { enforcePosterRatio } from "@/lib/poster-ratio-enforce";
 import EnhanceForPrintDialog from "@/components/EnhanceForPrintDialog";
+import FormatDerivativesDialog from "@/components/FormatDerivativesDialog";
 
 import PrintQualityIndicator from "@/components/PrintQualityIndicator";
 import { useUpscale } from "@/hooks/use-upscale";
@@ -582,6 +583,14 @@ function LightboxContent({
               </Button>
             }
           />
+          <FormatDerivativesDialog
+            sourceImageId={img.id}
+            sourceImageUrl={getEnhancedAssetUrl(img)}
+            sourceFormatId={img.print_format_id ?? null}
+            sourceWidth={img.enhanced_width_px ?? img.actual_width_px ?? null}
+            sourceHeight={img.enhanced_height_px ?? img.actual_height_px ?? null}
+          />
+
           {img.upscale_applied && currentModeLabel && (
             <Badge variant="outline" className="font-display text-xs text-primary border-primary/30">
               <Sparkles className="mr-1 h-3 w-3" /> {currentModeLabel}
