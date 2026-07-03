@@ -225,14 +225,15 @@ export default function FormatDerivativesDialog({
               `${cand.format?.label ?? cand.formatId} saved (${result.width}×${result.height}, ~${validation.achievablePpi} PPI)`,
             );
           } else {
+            const fail = persist as Extract<PersistDerivativeResult, { persisted: false }>;
             failed += 1;
             setState(cand.formatId, {
               status: "failed",
-              error: `${persist.stage} failed: ${persist.error.message}`,
-              fallback: persist.fallbackDownload,
+              error: `${fail.stage} failed: ${fail.error.message}`,
+              fallback: fail.fallbackDownload,
             });
             toast.error(
-              `${cand.format?.label ?? cand.formatId}: ${persist.stage} failed — download available`,
+              `${cand.format?.label ?? cand.formatId}: ${fail.stage} failed — download available`,
             );
           }
         } catch (err) {
