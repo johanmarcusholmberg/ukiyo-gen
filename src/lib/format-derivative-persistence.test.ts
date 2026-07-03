@@ -189,7 +189,7 @@ describe("persistFormatDerivative — failure paths trigger fallback download", 
       { supabase: stub.supabase, now: () => 1 },
     );
     expect(res.persisted).toBe(false);
-    if (res.persisted) return;
+    if (res.persisted !== false) return;
     expect(res.stage).toBe("upload");
     expect(res.error.message).toMatch(/storage exploded/);
     expect(res.fallbackDownload.blob).toBe(blob);
@@ -206,7 +206,7 @@ describe("persistFormatDerivative — failure paths trigger fallback download", 
       { supabase: stub.supabase, now: () => 1 },
     );
     expect(res.persisted).toBe(false);
-    if (res.persisted) return;
+    if (res.persisted !== false) return;
     expect(res.stage).toBe("upload");
     expect(res.error.message).toMatch(/network dead/);
     expect(res.fallbackDownload.blob).toBe(blob);
@@ -221,7 +221,7 @@ describe("persistFormatDerivative — failure paths trigger fallback download", 
       { supabase: stub.supabase, now: () => 1 },
     );
     expect(res.persisted).toBe(false);
-    if (res.persisted) return;
+    if (res.persisted !== false) return;
     expect(res.stage).toBe("insert");
     expect(res.error.message).toMatch(/db timeout/);
     expect(res.fallbackDownload.blob).toBe(blob);
