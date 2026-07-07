@@ -8,9 +8,11 @@
  * All values shown here are the publishable/anon values already shipped in
  * the browser bundle — no secrets are exposed.
  */
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, CheckCircle2, AlertTriangle } from "lucide-react";
+import { ArrowLeft, CheckCircle2, AlertTriangle, Loader2, RefreshCw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 
 function decodeJwtPayload(token: string): Record<string, unknown> | null {
   try {
