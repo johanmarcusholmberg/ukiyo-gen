@@ -8,9 +8,11 @@
  * All values shown here are the publishable/anon values already shipped in
  * the browser bundle — no secrets are exposed.
  */
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, CheckCircle2, AlertTriangle } from "lucide-react";
+import { ArrowLeft, CheckCircle2, AlertTriangle, Loader2, RefreshCw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 
 function decodeJwtPayload(token: string): Record<string, unknown> | null {
   try {
@@ -56,6 +58,79 @@ export default function BackendInfo() {
 
   const isAnon = keyInfo.role === "anon";
   const isServiceRole = keyInfo.role === "service_role";
+
+  // Live probe: hit REST, Auth, and Storage endpoints from the browser and
+  // record status/latency into an on-page log so we can see exactly what
+  // "Failed to fetch" means (CORS/DNS/network vs 4xx/5xx from the server).
+  type ProbeEntry = {
+    id: number;
+    ts: string;
+    target: string;
+    url: string;
+    status: number | null;
+    ms: number;
+    ok: boolean;
+    detail: string;
+  };
+  const [log, setLog] = useState<ProbeEntry[]>([]);
+  const [running, setRunning] = useState(false);
+  const idRef = useRef(0);
+
+  const append = (entry: Omit<ProbeEntry, "id" | "ts">) => {
+    idRef.current += 1;
+    setLog((prev) => [
+      { ...entry, id: idRef.current, ts: new Date().toISOString().slice(11, 23) },
+      ...prev,
+    ].slice(0, 40));
+  };
+
+  const probe = useCallback(
+    async (target: string, path: string, init?: RequestInit) => {
+      if (!url || !key) {
+        append({ target, url: path, status: null, ms: 0, ok: false, detail: "env missing" });
+        return;
+      }
+      const full = `${url}${path}`;
+      const started = performance.now();
+      try {
+        const res = await fetch(full, {
+          ...init,
+          headers: {
+            apikey: key,
+            Authorization: `Bearer ${key}`,
+            ...(init?.headers ?? {}),
+          },
+        });
+        const ms = Math.round(performance.now() - started);
+        let detail = res.statusText || "";
+        if (!res.ok) {
+          try {
+            detail = (await res.text()).slice(0, 200);
+          } catch {
+            /* ignore */
+          }
+        }
+        append({ target, url: path, status: res.status, ms, ok: res.ok, detail });
+      } catch (err) {
+        const ms = Math.round(performance.now() - started);
+        const msg = err instanceof Error ? err.message : String(err);
+        append({ target, url: path, status: null, ms, ok: false, detail: `network: ${msg}` });
+      }
+    },
+    [url, key],
+  );
+
+  const runAll = useCallback(async () => {
+    setRunning(true);
+    await probe("REST root", "/rest/v1/");
+    await probe("Auth settings", "/auth/v1/settings");
+    await probe("Storage health", "/storage/v1/bucket", { method: "GET" });
+    setRunning(false);
+  }, [probe]);
+
+  useEffect(() => {
+    void runAll();
+  }, [runAll]);
 
   return (
     <div className="min-h-screen bg-background paper-texture">
@@ -136,6 +211,61 @@ export default function BackendInfo() {
           <Row label="Origin" value={typeof window !== "undefined" ? window.location.origin : "—"} />
           <Row label="Mode" value={import.meta.env.MODE} />
           <Row label="Build" value={import.meta.env.PROD ? "production" : "development"} />
+        </section>
+
+        <section className="bg-card border border-border rounded-md p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-sm font-semibold">Live probes</h2>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Direct browser calls to REST, Auth, and Storage using the anon key.
+              </p>
+            </div>
+            <Button size="sm" variant="outline" onClick={runAll} disabled={running}>
+              {running ? (
+                <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+              ) : (
+                <RefreshCw className="h-3 w-3 mr-1" />
+              )}
+              Re-run
+            </Button>
+          </div>
+
+          {log.length === 0 ? (
+            <div className="text-xs text-muted-foreground py-6 text-center">No probes yet.</div>
+          ) : (
+            <div className="rounded-md border border-border bg-muted/30 divide-y divide-border max-h-96 overflow-auto">
+              {log.map((e) => (
+                <div key={e.id} className="px-3 py-2 text-xs font-mono flex items-start gap-2">
+                  <span className="text-muted-foreground shrink-0">{e.ts}</span>
+                  <span
+                    className={`shrink-0 w-16 font-semibold ${
+                      e.ok
+                        ? "text-emerald-600"
+                        : e.status === null
+                          ? "text-destructive"
+                          : "text-amber-600"
+                    }`}
+                  >
+                    {e.status ?? "ERR"}
+                  </span>
+                  <span className="shrink-0 w-16 text-muted-foreground">{e.ms}ms</span>
+                  <span className="shrink-0 w-24 truncate">{e.target}</span>
+                  <span className="truncate text-muted-foreground" title={e.detail}>
+                    {e.detail || e.url}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="mt-3 text-[11px] text-muted-foreground leading-relaxed">
+            <strong>ERR / "network: Failed to fetch"</strong> = the request never
+            reached the backend (DNS, CORS, TLS, or the project is offline).{" "}
+            <strong>5xx</strong> = the backend received it but failed internally.{" "}
+            <strong>4xx</strong> = reached the backend and was rejected (usually
+            auth/permissions).
+          </div>
         </section>
 
         {!refsAgree && (
