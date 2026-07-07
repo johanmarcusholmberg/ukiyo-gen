@@ -44,6 +44,7 @@ import PrintCalculator from "./pages/PrintCalculator";
 import ArtNouveau from "./pages/ArtNouveau";
 import MidCenturyModern from "./pages/MidCenturyModern";
 import LooseWatercolor from "./pages/LooseWatercolor";
+import BackendInfo from "./pages/BackendInfo";
 
 const queryClient = new QueryClient();
 
