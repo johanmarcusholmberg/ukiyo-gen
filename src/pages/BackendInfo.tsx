@@ -263,30 +263,68 @@ export default function BackendInfo() {
           {log.length === 0 ? (
             <div className="text-xs text-muted-foreground py-6 text-center">No probes yet.</div>
           ) : (
-            <div className="rounded-md border border-border bg-muted/30 divide-y divide-border max-h-96 overflow-auto">
-              {log.map((e) => (
-                <div key={e.id} className="px-3 py-2 text-xs font-mono flex items-start gap-2">
-                  <span className="text-muted-foreground shrink-0">{e.ts}</span>
-                  <span
-                    className={`shrink-0 w-16 font-semibold ${
-                      e.ok
-                        ? "text-emerald-600"
-                        : e.status === null
-                          ? "text-destructive"
-                          : "text-amber-600"
-                    }`}
-                  >
-                    {e.status ?? "ERR"}
-                  </span>
-                  <span className="shrink-0 w-16 text-muted-foreground">{e.ms}ms</span>
-                  <span className="shrink-0 w-24 truncate">{e.target}</span>
-                  <span className="truncate text-muted-foreground" title={e.detail}>
-                    {e.detail || e.url}
-                  </span>
-                </div>
-              ))}
+            <div className="rounded-md border border-border bg-muted/30 divide-y divide-border max-h-[32rem] overflow-auto">
+              {log.map((e) => {
+                const isOpen = !!expanded[e.id];
+                const fullReport =
+                  `${e.ts}  ${e.method} ${e.url}\n` +
+                  `status: ${e.status ?? "ERR"} ${e.statusText}\n` +
+                  `latency: ${e.ms}ms\n` +
+                  (e.errorName ? `error: ${e.errorName}: ${e.detail}\n` : "") +
+                  (e.errorStack ? `stack:\n${e.errorStack}\n` : "") +
+                  (Object.keys(e.headers).length
+                    ? `\nresponse headers:\n${Object.entries(e.headers).map(([k, v]) => `  ${k}: ${v}`).join("\n")}\n`
+                    : "") +
+                  (e.body ? `\nbody:\n${e.body}\n` : "");
+                return (
+                  <div key={e.id} className="text-xs font-mono">
+                    <button
+                      type="button"
+                      onClick={() => setExpanded((p) => ({ ...p, [e.id]: !isOpen }))}
+                      className="w-full text-left px-3 py-2 flex items-start gap-2 hover:bg-muted/50"
+                    >
+                      <span className="text-muted-foreground shrink-0">{e.ts}</span>
+                      <span
+                        className={`shrink-0 w-16 font-semibold ${
+                          e.ok
+                            ? "text-emerald-600"
+                            : e.status === null
+                              ? "text-destructive"
+                              : "text-amber-600"
+                        }`}
+                      >
+                        {e.status ?? "ERR"}
+                      </span>
+                      <span className="shrink-0 w-16 text-muted-foreground">{e.ms}ms</span>
+                      <span className="shrink-0 w-28 truncate">{e.target}</span>
+                      <span className="truncate text-muted-foreground flex-1">
+                        {e.detail || e.url}
+                      </span>
+                      <span className="shrink-0 text-muted-foreground">{isOpen ? "▾" : "▸"}</span>
+                    </button>
+                    {isOpen && (
+                      <div className="px-3 pb-3 space-y-2">
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 text-[11px]"
+                            onClick={() => void navigator.clipboard.writeText(fullReport)}
+                          >
+                            Copy full report
+                          </Button>
+                        </div>
+                        <pre className="whitespace-pre-wrap break-all bg-background border border-border rounded p-3 text-[11px] leading-relaxed max-h-96 overflow-auto">
+{fullReport}
+                        </pre>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
+
 
           <div className="mt-3 text-[11px] text-muted-foreground leading-relaxed">
             <strong>ERR / "network: Failed to fetch"</strong> = the request never
