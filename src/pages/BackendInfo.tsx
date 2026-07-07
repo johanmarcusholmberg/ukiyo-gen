@@ -67,30 +67,44 @@ export default function BackendInfo() {
     ts: string;
     target: string;
     url: string;
+    method: string;
     status: number | null;
+    statusText: string;
     ms: number;
     ok: boolean;
     detail: string;
+    body: string;
+    headers: Record<string, string>;
+    errorName?: string;
+    errorStack?: string;
   };
   const [log, setLog] = useState<ProbeEntry[]>([]);
   const [running, setRunning] = useState(false);
+  const [expanded, setExpanded] = useState<Record<number, boolean>>({});
   const idRef = useRef(0);
 
   const append = (entry: Omit<ProbeEntry, "id" | "ts">) => {
     idRef.current += 1;
-    setLog((prev) => [
-      { ...entry, id: idRef.current, ts: new Date().toISOString().slice(11, 23) },
-      ...prev,
-    ].slice(0, 40));
+    const id = idRef.current;
+    setLog((prev) =>
+      [{ ...entry, id, ts: new Date().toISOString().slice(11, 23) }, ...prev].slice(0, 40),
+    );
+    // Auto-expand failing entries so the full error is visible immediately.
+    setExpanded((prev) => ({ ...prev, [id]: !entry.ok }));
   };
 
   const probe = useCallback(
     async (target: string, path: string, init?: RequestInit) => {
+      const method = init?.method ?? "GET";
+      const full = url ? `${url}${path}` : path;
       if (!url || !key) {
-        append({ target, url: path, status: null, ms: 0, ok: false, detail: "env missing" });
+        append({
+          target, url: full, method, status: null, statusText: "", ms: 0,
+          ok: false, detail: "env missing (VITE_SUPABASE_URL / VITE_SUPABASE_PUBLISHABLE_KEY)",
+          body: "", headers: {},
+        });
         return;
       }
-      const full = `${url}${path}`;
       const started = performance.now();
       try {
         const res = await fetch(full, {
@@ -102,19 +116,34 @@ export default function BackendInfo() {
           },
         });
         const ms = Math.round(performance.now() - started);
-        let detail = res.statusText || "";
-        if (!res.ok) {
-          try {
-            detail = (await res.text()).slice(0, 200);
-          } catch {
-            /* ignore */
-          }
+        let body = "";
+        try {
+          body = await res.text();
+        } catch {
+          /* ignore body read failures */
         }
-        append({ target, url: path, status: res.status, ms, ok: res.ok, detail });
+        const headers: Record<string, string> = {};
+        res.headers.forEach((v, k) => {
+          headers[k] = v;
+        });
+        append({
+          target, url: full, method,
+          status: res.status, statusText: res.statusText, ms, ok: res.ok,
+          detail: res.ok ? (res.statusText || "ok") : (body.slice(0, 400) || res.statusText || "error"),
+          body, headers,
+        });
       } catch (err) {
         const ms = Math.round(performance.now() - started);
         const msg = err instanceof Error ? err.message : String(err);
-        append({ target, url: path, status: null, ms, ok: false, detail: `network: ${msg}` });
+        const name = err instanceof Error ? err.name : "Error";
+        const stack = err instanceof Error ? err.stack ?? "" : "";
+        append({
+          target, url: full, method,
+          status: null, statusText: "", ms, ok: false,
+          detail: `network: ${msg}`,
+          body: "", headers: {},
+          errorName: name, errorStack: stack,
+        });
       }
     },
     [url, key],
