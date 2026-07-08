@@ -281,22 +281,35 @@ export default function BackendInfo() {
         </section>
 
         <section className="bg-card border border-border rounded-md p-6">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-4 gap-2 flex-wrap">
             <div>
               <h2 className="text-sm font-semibold">Live probes</h2>
               <p className="text-xs text-muted-foreground mt-0.5">
                 Direct browser calls to REST, Auth, and Storage using the anon key.
+                {autoRefresh ? " Auto re-probes every 30s while this tab is visible." : ""}
               </p>
             </div>
-            <Button size="sm" variant="outline" onClick={runAll} disabled={running}>
-              {running ? (
-                <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-              ) : (
-                <RefreshCw className="h-3 w-3 mr-1" />
-              )}
-              Re-run
-            </Button>
+            <div className="flex items-center gap-2">
+              <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={autoRefresh}
+                  onChange={(e) => setAutoRefresh(e.target.checked)}
+                  className="h-3.5 w-3.5"
+                />
+                Auto (30s)
+              </label>
+              <Button size="sm" variant="outline" onClick={runAll} disabled={running}>
+                {running ? (
+                  <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-3 w-3 mr-1" />
+                )}
+                Re-run
+              </Button>
+            </div>
           </div>
+
 
           {log.length === 0 ? (
             <div className="text-xs text-muted-foreground py-6 text-center">No probes yet.</div>
